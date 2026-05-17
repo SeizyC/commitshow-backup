@@ -331,6 +331,7 @@ export type Project = {
   business_category: LadderCategory | null    // Creator-set or backfilled · drives ladder bucket
   detected_category: LadderCategory | null    // Auto-detected at audit time
   audit_count:       number                    // tiebreaker · increments per audit
+  last_analysis_at:  string | null              // ISO timestamp of latest analyze run · stamped by analyze-project
 }
 
 export interface ProjectImage {

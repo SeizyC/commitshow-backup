@@ -106,7 +106,12 @@ export function MyProductsPage() {
             </NavLink>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          // 2026-05-17 · single-column at every breakpoint. md:grid-cols-2
+          // cramped desktop cards into ~450px and forced descriptions to
+          // truncate; one row per project lets the full max-w-5xl width
+          // carry image + name + 2-line description + stage + score + live
+          // URL + audit-count + actions without anything competing.
+          <div className="flex flex-col gap-3">
             {applications.map(p => (
               <ApplicationRow
                 key={p.id}

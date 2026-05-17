@@ -816,26 +816,34 @@ export function ApplicationRow({ project: p, onDeleted }: { project: Project; on
     }
   }
 
+  // Helpers · live URL host + relative age string. Both used in the
+  // meta strip below.
+  const hostname = (() => {
+    if (!p.live_url) return null
+    try { return new URL(p.live_url).hostname.replace(/^www\./, '') } catch { return p.live_url }
+  })()
+  const auditedAgo = p.last_analysis_at
+    ? formatRelativeShort(new Date(p.last_analysis_at))
+    : null
+
   return (
     <div
       className="card-navy overflow-hidden transition-colors group relative flex flex-col sm:flex-row"
       style={{ borderRadius: '2px' }}
     >
-      {/* 2026-05-17 v2 mobile rewrite · the previous "image left 96px"
-          variant left only ~110px of content on 320px viewports, so
-          the description was effectively invisible and the stage +
-          score row needed to wrap. Now: mobile = image FULL-WIDTH 16:9
-          on top, content stacked below with breathing room; sm+ keeps
-          the original 96px side-image layout (info-dense on desktop,
-          legible on phone). */}
+      {/* Full-width image at every breakpoint — mobile gets 16:9 hero,
+          sm+ gets a 160px square sitting next to the content column.
+          Single-column grid on /me/products means the card has the
+          full max-w-5xl to work with (~960px on desktop) so the
+          thumbnail can be bigger AND the content area still has 700+
+          px to breathe. Replaces the prior 96×96 thumbnail that
+          looked anemic on a wide row. */}
       <div
         role="button" tabIndex={0}
         onClick={openDetail}
         onKeyDown={e => { if (e.key === 'Enter') openDetail() }}
         className="cursor-pointer flex-shrink-0 relative"
-        style={{
-          background: 'var(--navy-800)',
-        }}
+        style={{ background: 'var(--navy-800)' }}
       >
         <div className="sm:hidden w-full" style={{ aspectRatio: '16 / 9' }}>
           {p.thumbnail_url ? (
@@ -844,30 +852,25 @@ export function ApplicationRow({ project: p, onDeleted }: { project: Project; on
             <div className="w-full h-full flex items-center justify-center font-mono text-[11px]" style={{ color: 'var(--text-faint)' }}>NO IMAGE</div>
           )}
         </div>
-        <div className="hidden sm:block" style={{ width: '96px', height: '96px' }}>
+        <div className="hidden sm:block" style={{ width: '160px', height: '160px' }}>
           {p.thumbnail_url ? (
             <img src={p.thumbnail_url} alt="" loading="lazy" decoding="async" className="w-full h-full" style={{ objectFit: 'cover' }} />
           ) : (
-            <div className="w-full h-full flex items-center justify-center font-mono text-[10px]" style={{ color: 'var(--text-faint)' }}>NO IMG</div>
+            <div className="w-full h-full flex items-center justify-center font-mono text-[11px]" style={{ color: 'var(--text-faint)' }}>NO IMG</div>
           )}
         </div>
       </div>
-      {/* Content padding · mobile gets plain p-3 because the trash
-          overlay sits on the (full-width) thumbnail above, not on
-          this column. sm+ keeps p-3 on three sides + a 36px right
-          reserve so text doesn't slide under the top-right trash
-          button. pr-9 (=36px) matches the button's 30px width + 6px
-          breathing room · was sm:pr-12 (48px) which made desktop
-          cards look noticeably shrunken (CEO 피드백 2026-05-17). */}
-      <div className="p-3 sm:pr-9 flex-1 min-w-0 flex flex-col justify-between gap-2">
+      <div className="p-4 sm:p-5 sm:pr-12 flex-1 min-w-0 flex flex-col gap-3">
+        {/* Identity block · name + 2-line description. Both can grow
+            now that the row owns the full max-w-5xl. */}
         <div role="button" tabIndex={0} onClick={openDetail} onKeyDown={e => { if (e.key === 'Enter') openDetail() }} className="cursor-pointer min-w-0">
-          <div className="font-display font-bold text-base sm:text-sm leading-tight" style={{ color: 'var(--cream)' }}>{p.project_name}</div>
+          <div className="font-display font-bold text-lg sm:text-xl leading-tight" style={{ color: 'var(--cream)' }}>{p.project_name}</div>
           {p.description && (
             <div
-              className="font-mono text-[11px] sm:text-[10px] mt-1"
+              className="font-mono text-[12px] sm:text-[13px] mt-1.5"
               style={{
                 color: 'var(--text-secondary)',
-                lineHeight: 1.45,
+                lineHeight: 1.5,
                 display: '-webkit-box',
                 WebkitLineClamp: 2,
                 WebkitBoxOrient: 'vertical',
@@ -878,19 +881,84 @@ export function ApplicationRow({ project: p, onDeleted }: { project: Project; on
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2 min-w-0 flex-wrap">
-          <StageBadge project={p} size="xs" iconless />
-          <span className="font-mono text-xs tabular-nums font-medium" style={{ color: scoreColor }}>
+
+        {/* Meta strip · stage / score / live host / last audit / audit
+            count. Flex-wrap so each chip is visible even when the
+            content column shrinks (sm:p-5 + sm:pr-12 leaves ~700px
+            on a desktop max-w-5xl row · easily enough for all 5). */}
+        <div className="flex items-center gap-x-3 gap-y-1.5 min-w-0 flex-wrap font-mono text-[11px]" style={{ color: 'var(--text-muted)' }}>
+          <StageBadge project={p} size="sm" iconless />
+          <span className="tabular-nums font-medium text-[13px]" style={{ color: scoreColor }}>
             {p.score_total}/100
           </span>
-          {p.live_url && (
-            <span className="font-mono text-[10px] truncate" style={{ color: 'var(--text-muted)', maxWidth: '60%' }}>
-              {(() => { try { return new URL(p.live_url).hostname.replace(/^www\./, '') } catch { return p.live_url } })()}
-            </span>
+          {hostname && (
+            <a
+              href={p.live_url!}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              className="inline-flex items-center gap-1 truncate transition-colors"
+              style={{ color: 'var(--text-secondary)', textDecoration: 'none', maxWidth: '40%' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--gold-500)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-secondary)')}
+              title={p.live_url ?? undefined}
+            >
+              <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.5 1.5" />
+                <path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.5-1.5" />
+              </svg>
+              <span className="truncate">{hostname}</span>
+            </a>
+          )}
+          {auditedAgo && (
+            <span>Audited {auditedAgo}</span>
+          )}
+          {p.audit_count != null && p.audit_count > 0 && (
+            <span>{p.audit_count} audit{p.audit_count === 1 ? '' : 's'}</span>
           )}
         </div>
+
+        {/* Action strip · primary "Open dashboard →" plus the auxiliary
+            actions. The OPEN button replaces the implicit "click the
+            card" gesture as the explicit affordance — easier to find
+            and screen-readable. The card itself is still clickable. */}
+        <div className="flex items-center gap-2 flex-wrap pt-1">
+          <Link
+            to={`/projects/${p.id}`}
+            onClick={e => e.stopPropagation()}
+            className="font-mono text-[11px] font-medium tracking-wide px-3 py-1.5"
+            style={{
+              background:     'var(--gold-500)',
+              color:          'var(--navy-900)',
+              border:         'none',
+              borderRadius:   '2px',
+              textDecoration: 'none',
+            }}
+          >
+            OPEN DASHBOARD →
+          </Link>
+          {hostname && (
+            <a
+              href={p.live_url!}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              className="font-mono text-[11px] tracking-wide px-3 py-1.5"
+              style={{
+                background:     'transparent',
+                color:          'var(--cream)',
+                border:         '1px solid rgba(248,245,238,0.2)',
+                borderRadius:   '2px',
+                textDecoration: 'none',
+              }}
+            >
+              VISIT SITE ↗
+            </a>
+          )}
+        </div>
+
         {error && !confirmOpen && (
-          <div className="font-mono text-[10px] mt-1" style={{ color: '#F87171' }}>{error}</div>
+          <div className="font-mono text-[10px]" style={{ color: '#F87171' }}>{error}</div>
         )}
       </div>
       {/* Trash · anchored to card top-right · always visible regardless
@@ -1065,4 +1133,20 @@ function LibraryRow({ item }: { item: MDLibraryItem & { projects_applied: number
       </div>
     </div>
   )
+}
+
+// Short relative-time formatter for /me/products meta strip
+// ("Audited 2h ago" / "Audited 3d ago" / "Audited 2mo ago"). Lives
+// here rather than in lib/ because it's the only consumer for now.
+function formatRelativeShort(d: Date): string {
+  const ms = Date.now() - d.getTime()
+  const min = Math.floor(ms / 60_000)
+  if (min < 1)   return 'just now'
+  if (min < 60)  return `${min}m ago`
+  const hr = Math.floor(min / 60)
+  if (hr < 24)   return `${hr}h ago`
+  const day = Math.floor(hr / 24)
+  if (day < 30)  return `${day}d ago`
+  const mo = Math.floor(day / 30)
+  return `${mo}mo ago`
 }
