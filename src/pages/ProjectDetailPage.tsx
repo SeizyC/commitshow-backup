@@ -386,12 +386,12 @@ export function ProjectDetailPage() {
 
   // ── Backstage-owner Coach surface · 2026-05-17 ──
   // When a backstage owner lands on /projects/<id> (typically via the
-  // OPEN button on /backstage), the page should focus the coaching
-  // surface — not the visitor Overview. We auto-scroll to the Coach
-  // panel and flip the section indicator to 'analysis' once the
-  // snapshot resolves (latestSnapRaw guards against the empty-state
-  // flash). Once-per-mount via a ref so a re-audit success refetch
-  // doesn't yank scroll mid-session.
+  // OPEN button on /backstage), scroll to the Coach panel so the
+  // coaching loop is what they see first. Coach now sits under
+  // "About this project" (moved 2026-05-17b) so it's also in the
+  // natural reading flow — auto-scroll just removes the "did I land
+  // on the right page" hesitation. Once-per-mount via a ref so a
+  // re-audit success refetch doesn't yank scroll mid-session.
   useEffect(() => {
     if (!project || !latestSnapRaw) return
     if (project.status !== 'backstage') return
@@ -399,7 +399,6 @@ export function ProjectDetailPage() {
     if (!isOwn) return
     if (coachAutoScrolledRef.current) return
     coachAutoScrolledRef.current = true
-    setActiveSection('analysis')
     // Slight delay so the panel has painted before we scroll to it.
     window.setTimeout(() => {
       document.getElementById('audit-coach-panel')?.scrollIntoView({ block: 'start', behavior: 'smooth' })
@@ -566,68 +565,12 @@ export function ProjectDetailPage() {
               prompt when the band climbs. Hidden once the project is on
               stage (status='active') — by then the audit + AnalysisResultCard
               already cover the same ground. */}
-        {project.status === 'backstage' && isOwner && latestSnapRaw !== null && (
-          // latestSnapRaw !== null guard · without it, the Coach
-          // renders its empty state ("no quick wins left") on first
-          // paint because detectQuickWins sees null evidence and
-          // returns []. Once the snapshot select lands (~200ms after
-          // project load) the gate flips true and the real Coach panel
-          // mounts cleanly without the empty-state flash.
-          //
-          // id="audit-coach-panel" so the auto-scroll effect below
-          // can target it on backstage-owner mount.
-          <div id="audit-coach-panel">
-          <AuditCoachPanel
-            project={project}
-            snapshotRich={latestSnapRaw.rich}
-            lighthouse={latestSnapRaw.lighthouse}
-            githubSignals={latestSnapRaw.githubSignals}
-            onReanalyze={handleHeroReanalyze}
-            reanalyzing={heroRerunBusy}
-            previousBand={preReauditBand}
-            onPolishNeeded={() => {
-              // Coach detected the card isn't ready · expand the polish
-              // gate inline so the user stays in the management hub.
-              setPolishOpen(true)
-              // Scroll the gate into view after the next paint.
-              window.setTimeout(() => {
-                document.getElementById('backstage-polish-gate')?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-              }, 80)
-            }}
-            onAuditioned={async () => {
-              // audition_project flipped status backstage→active on the
-              // server · refetch so the local state catches up and the
-              // Coach gate (status='backstage') closes. Same URL, just
-              // pulling fresh row.
-              const refreshed = await fetchProjectById(project.id)
-              if (refreshed) setProject(refreshed)
-            }}
-          />
-          </div>
-        )}
-
-        {/* Inline polish gate · expanded by Coach's onPolishNeeded
-            callback. Sits below the Coach so re-audit + audition CTAs
-            stay where the user expects after the gate closes. */}
-        {project.status === 'backstage' && isOwner && polishOpen && (
-          <div id="backstage-polish-gate" className="mb-4">
-            <BackstagePolishGate
-              project={project}
-              onSavedAndAuditioned={async () => {
-                setPolishOpen(false)
-                const refreshed = await fetchProjectById(project.id)
-                if (refreshed) setProject(refreshed)
-              }}
-              onCancel={() => setPolishOpen(false)}
-              onNoTicket={() => {
-                // Out of tickets after polish save · funnel into Stripe
-                // via /backstage where the wallet card lives.
-                setPolishOpen(false)
-                navigate('/backstage')
-              }}
-            />
-          </div>
-        )}
+        {/* 2026-05-17 · Coach + Polish gate moved DOWN to right under
+            the "About this project" section so they sit in the page's
+            natural reading flow instead of floating above the hero
+            header (CEO 피드백 · the user couldn't find the coaching).
+            Backstage banner still sits up here so the privacy state
+            is named at the top. */}
 
         {/* ── Compact Hero (description moved to Overview pullquote) ── */}
         <header className="card-navy overflow-hidden mb-4 relative" style={{ borderRadius: '2px' }}>
@@ -1051,6 +994,54 @@ export function ProjectDetailPage() {
         <div className="mt-4">
           <AboutProjectSection projectId={project.id} projectName={project.project_name} />
         </div>
+
+        {/* ── Coach + Polish gate · 2026-05-17 moved here from top of
+              page (CEO 피드백 · the user kept missing it above the
+              hero card). Sits right under "About this project" so a
+              backstage owner reading down the page hits the
+              actionable surface naturally instead of scrolling up to
+              find it. Gated to status='backstage' + isOwner +
+              snapshot loaded. */}
+        {project.status === 'backstage' && isOwner && latestSnapRaw !== null && (
+          <div id="audit-coach-panel" className="mt-4">
+            <AuditCoachPanel
+              project={project}
+              snapshotRich={latestSnapRaw.rich}
+              lighthouse={latestSnapRaw.lighthouse}
+              githubSignals={latestSnapRaw.githubSignals}
+              onReanalyze={handleHeroReanalyze}
+              reanalyzing={heroRerunBusy}
+              previousBand={preReauditBand}
+              onPolishNeeded={() => {
+                setPolishOpen(true)
+                window.setTimeout(() => {
+                  document.getElementById('backstage-polish-gate')?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+                }, 80)
+              }}
+              onAuditioned={async () => {
+                const refreshed = await fetchProjectById(project.id)
+                if (refreshed) setProject(refreshed)
+              }}
+            />
+          </div>
+        )}
+        {project.status === 'backstage' && isOwner && polishOpen && (
+          <div id="backstage-polish-gate" className="mt-4">
+            <BackstagePolishGate
+              project={project}
+              onSavedAndAuditioned={async () => {
+                setPolishOpen(false)
+                const refreshed = await fetchProjectById(project.id)
+                if (refreshed) setProject(refreshed)
+              }}
+              onCancel={() => setPolishOpen(false)}
+              onNoTicket={() => {
+                setPolishOpen(false)
+                navigate('/backstage')
+              }}
+            />
+          </div>
+        )}
 
         {/* ── Owner coach · 'Next step' fix-prompt CTA, lifted out of the
               ANALYSIS section so the most actionable surface lands above
