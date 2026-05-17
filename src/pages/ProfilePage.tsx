@@ -351,13 +351,13 @@ export function ProfilePage() {
           </div>
           {!loading && applications.length === 0 && (
             <div className="card-navy p-8 text-center" style={{ borderRadius: '2px' }}>
-              <div className="font-display text-lg font-bold mb-2" style={{ color: 'var(--text-muted)' }}>No auditions yet</div>
+              <div className="font-display text-lg font-bold mb-2" style={{ color: 'var(--text-muted)' }}>No audits yet</div>
               <NavLink
                 to="/submit"
                 className="inline-block font-mono text-xs tracking-wide px-4 py-2"
                 style={{ background: 'var(--gold-500)', color: 'var(--navy-900)', border: 'none', borderRadius: '2px', textDecoration: 'none' }}
               >
-                AUDITION YOUR FIRST PRODUCT →
+                ANALYZE YOUR FIRST MVP →
               </NavLink>
             </div>
           )}
@@ -475,9 +475,14 @@ function StandingRow({ label, value, color, hint }: { label: string; value: stri
       border: '1px solid rgba(255,255,255,0.05)',
       borderRadius: '2px',
     }}>
-      <div className="flex items-baseline justify-between mb-1">
-        <span className="font-mono text-[10px] tracking-widest uppercase" style={{ color: 'var(--text-label)' }}>{label}</span>
-        <span className="font-display font-bold text-base" style={{ color }}>{value}</span>
+      {/* 2026-05-17 mobile fix · flex-wrap + min-w-0 lets long labels
+          ("MONTHLY VOTES LEFT" with tracking-widest) wrap instead of
+          shoving the VALUE off the right edge on narrow viewports.
+          gap-x-3 keeps spacing on the same line · gap-y-1 keeps the
+          value comfortably under the label when wrapped. */}
+      <div className="flex items-baseline justify-between flex-wrap gap-x-3 gap-y-1 mb-1">
+        <span className="font-mono text-[10px] tracking-widest uppercase min-w-0" style={{ color: 'var(--text-label)' }}>{label}</span>
+        <span className="font-display font-bold text-base tabular-nums" style={{ color }}>{value}</span>
       </div>
       <div className="font-mono text-[10px]" style={{ color: 'var(--text-muted)', lineHeight: 1.5 }}>{hint}</div>
     </div>
@@ -755,10 +760,14 @@ function GraduationExplainer({ currentGrade, graduatedCount }: { currentGrade: s
                     opacity: isPast ? 0.45 : 1,
                   }}
                 >
-                  <div className="flex items-baseline justify-between mb-1">
+                  <div className="flex items-baseline justify-between flex-wrap gap-x-3 gap-y-0.5 mb-1">
                     <span className="font-display font-bold text-sm" style={{ color: CREATOR_GRADE_COLOR[m.grade] || 'var(--cream)' }}>
                       {m.grade}
                     </span>
+                    {/* threshold strings like "5 Encore · avg ≥ 80 · 20+ applauds received"
+                        easily overflow on narrow viewports · flex-wrap drops it to a
+                        second line under the grade name instead of clipping or
+                        pushing it off-screen. (2026-05-17 mobile fix) */}
                     <span className="font-mono text-[10px]" style={{ color: 'var(--text-muted)' }}>{m.threshold}</span>
                   </div>
                   <div className="font-mono text-[10px]" style={{ color: 'var(--text-secondary)', lineHeight: 1.5 }}>{m.note}</div>
@@ -809,7 +818,7 @@ export function ApplicationRow({ project: p, onDeleted }: { project: Project; on
 
   return (
     <div
-      className="card-navy overflow-hidden transition-colors group flex"
+      className="card-navy overflow-hidden transition-colors group flex relative"
       style={{ borderRadius: '2px' }}
     >
       <div
@@ -825,58 +834,55 @@ export function ApplicationRow({ project: p, onDeleted }: { project: Project; on
           <div className="w-full h-full flex items-center justify-center font-mono text-[10px]" style={{ color: 'var(--text-faint)' }}>NO IMG</div>
         )}
       </div>
-      <div className="p-3 flex-1 min-w-0 flex flex-col justify-between gap-2">
+      <div className="p-3 pr-10 flex-1 min-w-0 flex flex-col justify-between gap-2">
+        {/* pr-10 reserves space on the right for the absolute-positioned
+            delete button (top-right overlay · 28×28 with 8px right
+            offset = ~36px reserved). 2026-05-17 mobile fix · the
+            previous flex-wrap-reverse layout still let the trash
+            button slip off-screen on ultra-narrow cards because the
+            badge + score group claimed all the row width. Anchoring
+            the action to top-right of the card guarantees it shows
+            regardless of how cramped the content column gets. */}
         <div role="button" tabIndex={0} onClick={openDetail} onKeyDown={e => { if (e.key === 'Enter') openDetail() }} className="cursor-pointer min-w-0">
           <div className="font-display font-bold text-sm truncate" style={{ color: 'var(--cream)' }}>{p.project_name}</div>
           <div className="font-mono text-[10px] mt-0.5 truncate" style={{ color: 'var(--text-secondary)' }}>{p.description}</div>
         </div>
-        {/* Bottom row · stage badge + score (left, flex-1 so they keep
-            shrinking room) + trash icon (right, fixed 32px so it
-            survives any width). flex-wrap-reverse keeps the delete
-            icon visible when the row needs to stack vertically on
-            ultra-narrow viewports — score / badge wrap to a new line
-            below the icon instead of pushing it off-screen.
-            2026-05-17 fix · DELETE text label was clipped on narrow
-            two-column /me/products grid on mobile · icon-only with
-            title attribute keeps both the action AND the score
-            visible together. */}
-        <div className="flex items-center justify-between gap-2 min-w-0 flex-wrap-reverse">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <StageBadge project={p} size="xs" iconless />
-            <span className="font-mono text-xs tabular-nums font-medium" style={{ color: scoreColor }}>
-              {p.score_total}/100
-            </span>
-          </div>
-          <button
-            onClick={() => { setError(''); setConfirmOpen(true) }}
-            title="Delete this product"
-            aria-label="Delete this product"
-            className="flex items-center justify-center flex-shrink-0 transition-colors"
-            style={{
-              width:        32,
-              height:       32,
-              background:   'transparent',
-              color:        'var(--text-muted)',
-              border:       '1px solid rgba(255,255,255,0.08)',
-              borderRadius: '2px',
-              cursor:       'pointer',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.color = 'var(--scarlet)'; e.currentTarget.style.borderColor = 'rgba(200,16,46,0.4)' }}
-            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)' }}
-          >
-            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M3 6h18" />
-              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-              <path d="M10 11v6" />
-              <path d="M14 11v6" />
-            </svg>
-          </button>
+        <div className="flex items-center gap-2 min-w-0 flex-wrap">
+          <StageBadge project={p} size="xs" iconless />
+          <span className="font-mono text-xs tabular-nums font-medium" style={{ color: scoreColor }}>
+            {p.score_total}/100
+          </span>
         </div>
         {error && !confirmOpen && (
           <div className="font-mono text-[10px] mt-1" style={{ color: '#F87171' }}>{error}</div>
         )}
       </div>
+      <button
+        onClick={(e) => { e.stopPropagation(); setError(''); setConfirmOpen(true) }}
+        title="Delete this product"
+        aria-label="Delete this product"
+        className="absolute top-2 right-2 flex items-center justify-center transition-colors z-10"
+        style={{
+          width:        28,
+          height:       28,
+          background:   'rgba(6,12,26,0.65)',
+          color:        'var(--text-muted)',
+          border:       '1px solid rgba(255,255,255,0.10)',
+          borderRadius: '2px',
+          cursor:       'pointer',
+          backdropFilter: 'blur(4px)',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.color = 'var(--scarlet)'; e.currentTarget.style.borderColor = 'rgba(200,16,46,0.5)'; e.currentTarget.style.background = 'rgba(200,16,46,0.18)' }}
+        onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)'; e.currentTarget.style.background = 'rgba(6,12,26,0.65)' }}
+      >
+        <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M3 6h18" />
+          <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+          <path d="M10 11v6" />
+          <path d="M14 11v6" />
+        </svg>
+      </button>
 
       {confirmOpen && createPortal(
         <div
@@ -993,7 +999,12 @@ function LibraryRow({ item }: { item: MDLibraryItem & { projects_applied: number
           {item.description}
         </div>
       )}
-      <div className="flex items-center gap-3 mt-2 font-mono text-[10px]" style={{ color: 'var(--text-muted)' }}>
+      {/* 2026-05-17 mobile fix · flex-wrap so 5 meta chips
+          (price · Encore · applied · downloads · status) reflow onto
+          multiple lines instead of getting clipped on narrow library
+          rows. gap-x-3/gap-y-1 keeps spacing readable across both
+          axes when wrapped. */}
+      <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-2 font-mono text-[10px]" style={{ color: 'var(--text-muted)' }}>
         <span style={{ color: item.is_free ? '#00D4AA' : 'var(--gold-500)' }}>
           {item.is_free ? 'FREE' : `$${(item.price_cents / 100).toFixed(0)}`}
         </span>

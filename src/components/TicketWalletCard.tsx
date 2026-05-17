@@ -160,12 +160,16 @@ export function TicketWalletCard({ memberId }: { memberId: string }) {
         </div>
       )}
 
-      <div className="flex items-center gap-2 flex-wrap">
+      {/* 2026-05-17 mobile fix · BUY/GIFT stack full-width on narrow
+          (was inline-flex with flex-wrap which truncated the
+          "BUY TICKETS · from $19" label on tiny viewports). sm: bumps
+          back to inline for tablet+ widths. */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:flex-wrap">
         <button
           type="button"
           onClick={() => { setQuantity(1); setError(null); setDialogOpen(true) }}
           disabled={!canBuy}
-          className="px-4 py-2 text-xs font-medium tracking-wide transition-all inline-flex items-center gap-1.5"
+          className="w-full sm:w-auto px-4 py-2.5 text-xs font-medium tracking-wide transition-all inline-flex items-center justify-center gap-1.5"
           style={{
             background:   canBuy ? 'var(--gold-500)' : 'rgba(240,192,64,0.18)',
             color:        canBuy ? 'var(--navy-900)' : 'var(--text-muted)',
@@ -192,7 +196,7 @@ export function TicketWalletCard({ memberId }: { memberId: string }) {
           <button
             type="button"
             onClick={() => { setError(null); setGiftOpen(true) }}
-            className="px-4 py-2 text-xs font-medium tracking-wide transition-all inline-flex items-center gap-1.5"
+            className="w-full sm:w-auto px-4 py-2.5 text-xs font-medium tracking-wide transition-all inline-flex items-center justify-center gap-1.5"
             style={{
               background:   'transparent',
               color:        'var(--cream)',
@@ -208,7 +212,7 @@ export function TicketWalletCard({ memberId }: { memberId: string }) {
         )}
 
         {founderActive && (
-          <span className="font-mono text-[10px]" style={{ color: 'var(--gold-500)' }}>
+          <span className="font-mono text-[10px] text-center sm:text-left" style={{ color: 'var(--gold-500)' }}>
             {founder!.remaining} founder spots left
           </span>
         )}
