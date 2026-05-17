@@ -50,7 +50,7 @@ interface HeroProps {
 
 export function Hero(_props: HeroProps) {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
 
   // Stage-aware Hero (2026-05-17). Returning members land on the same
   // hero as visitors, which made the primary CTA — "Analyze your MVP"
@@ -82,18 +82,44 @@ export function Hero(_props: HeroProps) {
   // animation are the brand impression and switching them on state
   // would be jarring across logins.
   const [buckets, setBuckets] = useState<MemberStageBuckets | null>(null)
+  const [bucketsLoading, setBucketsLoading] = useState(false)
   useEffect(() => {
-    if (!user?.id) { setBuckets(null); return }
+    if (!user?.id) { setBuckets(null); setBucketsLoading(false); return }
     let alive = true
-    fetchMemberStageBuckets(user.id).then(b => { if (alive) setBuckets(b) })
+    setBucketsLoading(true)
+    fetchMemberStageBuckets(user.id).then(b => {
+      if (!alive) return
+      setBuckets(b)
+      setBucketsLoading(false)
+    })
     return () => { alive = false }
   }, [user?.id])
 
+  // 2026-05-17 · CTA "flash" fix · before this, the CTA group rendered
+  // the visitor-default ("Analyze your MVP →") on first paint and then
+  // swapped to the stage-aware variant once buckets resolved. Returning
+  // members saw a brief flash of the wrong CTA, plus a label-width
+  // jump on hydration.
+  //
+  // Now: render the CTA pair only when we know enough to pick the right
+  // copy — auth has loaded AND, if logged-in, buckets have arrived.
+  // During the gap we mount a same-height skeleton so the layout
+  // doesn't shift; the skeleton fades into the real button on resolve.
+  const ctaReady = !authLoading && (!user || (!bucketsLoading && buckets !== null))
+
   const primary = pickHeroPrimaryCta(buckets)
   const onPrimary   = () => navigate(primary.to)
-  const onSecondary = () => navigate(buckets && (buckets.backstage > 0 || buckets.onStage > 0 || buckets.encore > 0) ? '/submit' : '/projects')
-  const secondaryLabel = buckets && (buckets.backstage > 0 || buckets.onStage > 0 || buckets.encore > 0)
-    ? 'Analyze another →'
+  // Secondary CTA · CEO 피드백 2026-05-17 · returning members already
+  // see "Analyze [verb] →" embedded in the primary CTA (Continue in
+  // Backstage / Your stage standings / Analyze your MVP) so the
+  // secondary shouldn't duplicate the analyze funnel. Send them to
+  // /products to browse what other vibecoders are shipping —
+  // exposure to peer work + a discovery surface. Anon visitors keep
+  // the original "Browse products →" pointing at the same page.
+  const hasAnyBucket = !!(buckets && (buckets.backstage > 0 || buckets.onStage > 0 || buckets.encore > 0))
+  const onSecondary = () => navigate('/products')
+  const secondaryLabel = hasAnyBucket
+    ? "Browse other vibecoders' projects →"
     : 'Browse products →'
 
   return (
@@ -147,41 +173,77 @@ export function Hero(_props: HeroProps) {
           </p>
 
           <div className="stagger-4 flex gap-4 justify-center lg:justify-start flex-wrap">
-            <button
-              onClick={onPrimary}
-              className="px-8 py-3.5 text-sm font-medium tracking-wide transition-all"
-              style={{
-                background: 'var(--gold-500)',
-                color: 'var(--navy-900)',
-                border: 'none',
-                borderRadius: '2px',
-                cursor: 'pointer',
-                fontFamily: 'DM Mono, monospace',
-                boxShadow: '0 0 40px rgba(240,192,64,0.2)',
-                width: '280px',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--gold-400)'; e.currentTarget.style.boxShadow = '0 0 60px rgba(240,192,64,0.35)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'var(--gold-500)'; e.currentTarget.style.boxShadow = '0 0 40px rgba(240,192,64,0.2)'; }}
-            >
-              {primary.label}
-            </button>
-            <button
-              onClick={onSecondary}
-              className="px-8 py-3.5 text-sm font-medium tracking-wide transition-all"
-              style={{
-                background: 'transparent',
-                color: 'var(--cream)',
-                border: '1px solid rgba(248,245,238,0.2)',
-                borderRadius: '2px',
-                cursor: 'pointer',
-                fontFamily: 'DM Mono, monospace',
-                width: '280px',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(240,192,64,0.5)')}
-              onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(248,245,238,0.2)')}
-            >
-              {secondaryLabel}
-            </button>
+            {ctaReady ? (
+              <>
+                <button
+                  onClick={onPrimary}
+                  className="px-8 py-3.5 text-sm font-medium tracking-wide transition-all"
+                  style={{
+                    background: 'var(--gold-500)',
+                    color: 'var(--navy-900)',
+                    border: 'none',
+                    borderRadius: '2px',
+                    cursor: 'pointer',
+                    fontFamily: 'DM Mono, monospace',
+                    boxShadow: '0 0 40px rgba(240,192,64,0.2)',
+                    width: '280px',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--gold-400)'; e.currentTarget.style.boxShadow = '0 0 60px rgba(240,192,64,0.35)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'var(--gold-500)'; e.currentTarget.style.boxShadow = '0 0 40px rgba(240,192,64,0.2)'; }}
+                >
+                  {primary.label}
+                </button>
+                <button
+                  onClick={onSecondary}
+                  className="px-8 py-3.5 text-sm font-medium tracking-wide transition-all"
+                  style={{
+                    background: 'transparent',
+                    color: 'var(--cream)',
+                    border: '1px solid rgba(248,245,238,0.2)',
+                    borderRadius: '2px',
+                    cursor: 'pointer',
+                    fontFamily: 'DM Mono, monospace',
+                    width: '280px',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(240,192,64,0.5)')}
+                  onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(248,245,238,0.2)')}
+                >
+                  {secondaryLabel}
+                </button>
+              </>
+            ) : (
+              <>
+                {/* Skeleton buttons · same width/height as the real
+                    buttons so the layout doesn't shift when ctaReady
+                    flips. Gentle pulse keeps it from looking broken
+                    on slow connections. The CTAs themselves only
+                    render once auth + buckets resolve — guarantees
+                    a returning member never sees "Analyze your MVP →"
+                    flash before "Continue in Backstage (N) →". */}
+                <div
+                  aria-hidden="true"
+                  className="cta-skeleton"
+                  style={{
+                    width: '280px',
+                    height: '48px',
+                    background: 'rgba(240,192,64,0.18)',
+                    border: 'none',
+                    borderRadius: '2px',
+                  }}
+                />
+                <div
+                  aria-hidden="true"
+                  className="cta-skeleton"
+                  style={{
+                    width: '280px',
+                    height: '48px',
+                    background: 'transparent',
+                    border: '1px solid rgba(248,245,238,0.1)',
+                    borderRadius: '2px',
+                  }}
+                />
+              </>
+            )}
           </div>
 
           {/* Stage-buckets strip · returning user awareness. Shows the

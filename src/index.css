@@ -240,6 +240,18 @@ body::before {
 }
 .pulse-dot { animation: pulse-dot 2s infinite; }
 
+/* Hero CTA skeleton · placeholder shown while auth + buckets resolve.
+   Gentle opacity pulse keeps it from reading as a dead button without
+   shifting layout. Respects prefers-reduced-motion. */
+@keyframes cta-skeleton-pulse {
+  0%, 100% { opacity: 0.7; }
+  50%      { opacity: 1;   }
+}
+.cta-skeleton { animation: cta-skeleton-pulse 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .cta-skeleton { animation: none; opacity: 0.85; }
+}
+
 /* ── Hero engine progress shimmer ──
    Continuous sweep across the audit-finding progress bar so it reads as
    alive even when the bar is creeping the last few percent slowly during
