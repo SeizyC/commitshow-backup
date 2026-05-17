@@ -160,6 +160,12 @@ export function ProjectDetailPage() {
   // a two-step confirm tied to backstage status only (active rows
   // can't be deleted — RLS gates it too, 20260517 migration).
   const [polishOpen,      setPolishOpen]      = useState(false)
+  // 2026-05-18 · banner-level audition flow (CEO 피드백 · PUT ON STAGE
+  // 버튼이 실제 audition_project RPC 까지 실행되어야 한다 · polish 부족
+  // 시 무엇이 빠졌는지 명시). Mirrors AuditCoachPanel's auditionNow
+  // logic · separate state so the two surfaces don't fight each other.
+  const [auditionBusy,    setAuditionBusy]    = useState(false)
+  const [auditionError,   setAuditionError]   = useState<string | null>(null)
   // 2026-05-18 · Market edit modal · Market tab dropped from
   // OwnerToolsTabs · About section now carries the inline EDIT
   // affordance, this state opens MarketPositionForm in a modal.
@@ -307,6 +313,68 @@ export function ProjectDetailPage() {
       setLoading(false)
     })()
   }, [id])
+
+  // ── Backstage banner audition handler · 2026-05-18 ──
+  // CEO 피드백 · the banner's PUT ON STAGE button was a Link to
+  // /backstage · users wanted it to actually run the audition right
+  // here. Mirrors AuditCoachPanel.auditionNow · polish gate first,
+  // then audition_project RPC, then refetch project so the page
+  // re-renders with status='active'. On no_ticket, hand off to the
+  // checkout endpoint (same path AuditionPromoteCard uses). Errors
+  // surface inline below the banner via auditionError state.
+  const handleBannerAudition = async () => {
+    if (!project || auditionBusy) return
+    setAuditionError(null)
+
+    // Polish check · description + at least one image.
+    const hasDescription = !!(project.description && project.description.trim().length > 0)
+    const hasImage       = Array.isArray(project.images) && project.images.length > 0
+    if (!hasDescription || !hasImage) {
+      // Expand polish gate inline · same affordance the Coach
+      // uses · scroll it into view so the user sees what's missing.
+      setPolishOpen(true)
+      window.setTimeout(() => {
+        document.getElementById('backstage-polish-gate')?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      }, 80)
+      return
+    }
+
+    setAuditionBusy(true)
+    try {
+      const { data, error } = await supabase.rpc('audition_project', { p_project_id: project.id })
+      if (error) throw new Error(error.message)
+      const result = data as { ok: boolean; reason?: string }
+      if (result.ok) {
+        window.dispatchEvent(new CustomEvent('commitshow:tickets-updated'))
+        const refreshed = await fetchProjectById(project.id)
+        if (refreshed) setProject(refreshed)
+        setAuditionBusy(false)
+        return
+      }
+      if (result.reason === 'no_ticket') {
+        // Out of tickets · hand off to Stripe checkout · success_url
+        // returns to /submit?payment=success&audition_target=<id>
+        // where PostPaymentAuditionPromote finishes the promotion.
+        const { data: sessionRes } = await supabase.auth.getSession()
+        const token = sessionRes.session?.access_token
+        if (!token) throw new Error('Sign in expired · refresh and try again.')
+        const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/create-checkout-session`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ kind: 'audit_fee', audition_target: project.id }),
+        })
+        const body = await res.json()
+        if (!res.ok || !body.url) throw new Error(body.error || `Checkout failed (${res.status})`)
+        window.location.assign(body.url)
+        return
+      }
+      throw new Error(result.reason ?? 'Audition failed')
+    } catch (err) {
+      setAuditionError((err as Error).message)
+      setAuditionBusy(false)
+    }
+  }
 
   // Hero-level Re-audit handler · same pipeline as the AnalysisResultCard
   // version (lib/analysis::analyzeProject 'resubmit' trigger + ladder cache
@@ -521,16 +589,21 @@ export function ProjectDetailPage() {
 
   // ── Section nav config (order = scroll order) ───────────────
   // 2026-05-18 (CEO 피드백) · Overview tab removed · its content
-  // (description pullquote, screenshots, ScoreTimeline, VibeConcerns,
-  // NativeApp panel) moved into the top of Analysis where it shares
-  // context with the audit report (the framework panels ARE audit
-  // findings, not separate "overview" data). "Private brief" tab
-  // renamed to match the section heading change ("Creator's notes").
+  // moved into the top of Analysis. "Private brief" → "Creator's
+  // notes" to match section heading.
+  // 2026-05-18b · Activity + Backstage tabs hidden when project is
+  // status='backstage' · those sections themselves are conditional
+  // on the same gate (forecasts/applauds gated to on-stage; Phase 2
+  // brief lock collapsible collides with the stage name when the
+  // project is literally backstage). Owner gets Analysis +
+  // Creator's notes only on a backstage project · cleaner.
   const sections: Array<{ id: string; label: string; ownerOnly?: boolean }> = [
     { id: 'analysis',  label: 'Analysis' },
-    { id: 'activity',  label: 'Activity' },
-    { id: 'backstage', label: 'Backstage' },
   ]
+  if (project.status !== 'backstage') {
+    sections.push({ id: 'activity',  label: 'Activity' })
+    sections.push({ id: 'backstage', label: 'Backstage' })
+  }
   if (isOwner) sections.push({ id: 'brief', label: "Creator's notes", ownerOnly: true })
 
   // Audition delta badge · latest round change (reused in hero + scan strip)
@@ -575,37 +648,78 @@ export function ProjectDetailPage() {
               path to "Put it on stage". Now the option is explicit
               at the top of every backstage owner page · the Coach
               handles the climb-first flow underneath. */}
-        {project.status === 'backstage' && isOwner && (
-          <div className="mb-4 p-4 flex items-baseline justify-between gap-3 flex-wrap" style={{
-            background: 'rgba(240,192,64,0.07)',
-            border: '1px solid rgba(240,192,64,0.35)',
-            borderRadius: '2px',
-          }}>
-            <div>
-              <div className="font-mono text-xs tracking-widest" style={{ color: 'var(--gold-500)' }}>
-                // BACKSTAGE · LISTED PUBLICLY · CREATOR + DETAILS HIDDEN
+        {project.status === 'backstage' && isOwner && (() => {
+          // Polish check · what's missing before audition can fire.
+          // Surfaced inline so the user sees WHY the button might
+          // take them to the gate (not just "fix it somewhere"). The
+          // button still works in both states · it expands the polish
+          // gate when missing, otherwise fires the audition_project
+          // RPC directly via handleBannerAudition.
+          const hasDescription = !!(project.description && project.description.trim().length > 0)
+          const hasImage       = Array.isArray(project.images) && project.images.length > 0
+          const missing: string[] = []
+          if (!hasDescription) missing.push('description')
+          if (!hasImage)       missing.push('thumbnail image')
+          const ready = missing.length === 0
+          return (
+            <div className="mb-4 p-4 flex flex-col gap-3" style={{
+              background: 'rgba(240,192,64,0.07)',
+              border: '1px solid rgba(240,192,64,0.35)',
+              borderRadius: '2px',
+            }}>
+              <div className="flex items-baseline justify-between gap-3 flex-wrap">
+                <div>
+                  <div className="font-mono text-xs tracking-widest" style={{ color: 'var(--gold-500)' }}>
+                    // BACKSTAGE · LISTED PUBLICLY · CREATOR + DETAILS HIDDEN
+                  </div>
+                  <div className="font-mono text-[11px] mt-1 max-w-2xl" style={{ color: 'rgba(248,245,238,0.65)', lineHeight: 1.6 }}>
+                    Your project shows on /products as a curtain card · score, byline, description all sealed.
+                    Climb the coach below for a higher score first, OR put it on stage now to open the full
+                    card and start collecting forecasts.
+                  </div>
+                  {!ready && (
+                    <div className="font-mono text-[11px] mt-2" style={{ color: 'var(--scarlet)', lineHeight: 1.55 }}>
+                      Stage register requires: <strong>{missing.join(' + ')}</strong> · clicking PUT ON STAGE opens the gate.
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleBannerAudition}
+                  disabled={auditionBusy}
+                  className="font-mono text-xs font-medium tracking-widest px-4 py-2 whitespace-nowrap"
+                  style={{
+                    background:     ready ? 'var(--gold-500)' : 'rgba(240,192,64,0.5)',
+                    color:          'var(--navy-900)',
+                    border:         'none',
+                    borderRadius:   '2px',
+                    cursor:         auditionBusy ? 'wait' : 'pointer',
+                    opacity:        auditionBusy ? 0.6 : 1,
+                  }}
+                  title={ready
+                    ? 'Audition this project · fires audition_project RPC'
+                    : `Missing: ${missing.join(', ')} · clicking opens the polish gate`}
+                >
+                  {auditionBusy
+                    ? 'AUDITIONING…'
+                    : ready
+                      ? 'PUT ON STAGE →'
+                      : 'COMPLETE POLISH →'}
+                </button>
               </div>
-              <div className="font-mono text-[11px] mt-1 max-w-2xl" style={{ color: 'rgba(248,245,238,0.65)', lineHeight: 1.6 }}>
-                Your project shows on /products as a curtain card · score, byline, description all sealed.
-                Climb the coach below if you want a higher score first, OR put it on stage now to open the
-                full card and start collecting forecasts.
-              </div>
+              {auditionError && (
+                <div className="font-mono text-[11px] px-3 py-2" style={{
+                  background:   'rgba(200,16,46,0.08)',
+                  border:       '1px solid rgba(200,16,46,0.4)',
+                  borderRadius: '2px',
+                  color:        'var(--scarlet)',
+                }}>
+                  {auditionError}
+                </div>
+              )}
             </div>
-            <Link
-              to="/backstage"
-              className="font-mono text-xs font-medium tracking-widest px-4 py-2 whitespace-nowrap"
-              style={{
-                background:     'var(--gold-500)',
-                color:          'var(--navy-900)',
-                border:         'none',
-                borderRadius:   '2px',
-                textDecoration: 'none',
-              }}
-            >
-              PUT ON STAGE →
-            </Link>
-          </div>
-        )}
+          )
+        })()}
 
 
         {/* ── Pre-audition Coach · §16.2 (2026-05-15) ──
@@ -1358,59 +1472,72 @@ export function ProjectDetailPage() {
               but not the headline — keeping them folded shortens the
               page for the 99% of visitors who don't need to read each
               row. (Tier 2 page-tighten · 2026-05-07.) */}
-          <CollapsibleSection
-            id="activity"
-            label="ACTIVITY"
-            hint="Forecasts and applauds on this product."
-            summary={`${forecasts.length} forecast${forecasts.length === 1 ? '' : 's'} · ${applauds.length} applaud${applauds.length === 1 ? '' : 's'}`}
-          >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <ActivityList title="FORECASTS" emptyLabel="No forecasts cast yet." accent="var(--gold-500)">
-                {forecasts.map(f => (
-                  <ActivityRow
-                    key={f.id}
-                    primary={`${f.scout_tier} Scout`}
-                    detail={f.predicted_score != null ? `Forecast ${f.predicted_score}/100` : ''}
-                    secondary={f.comment ?? ''}
-                    time={f.created_at}
-                  />
-                ))}
-              </ActivityList>
+          {/* ACTIVITY hidden on status='backstage' (CEO 피드백 2026-05-18) ·
+              backstage projects can't receive forecasts or applauds
+              (those gates require on-stage status) so rendering "0
+              forecasts · 0 applauds" is just noise on the page. */}
+          {project.status !== 'backstage' && (
+            <CollapsibleSection
+              id="activity"
+              label="ACTIVITY"
+              hint="Forecasts and applauds on this product."
+              summary={`${forecasts.length} forecast${forecasts.length === 1 ? '' : 's'} · ${applauds.length} applaud${applauds.length === 1 ? '' : 's'}`}
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <ActivityList title="FORECASTS" emptyLabel="No forecasts cast yet." accent="var(--gold-500)">
+                  {forecasts.map(f => (
+                    <ActivityRow
+                      key={f.id}
+                      primary={`${f.scout_tier} Scout`}
+                      detail={f.predicted_score != null ? `Forecast ${f.predicted_score}/100` : ''}
+                      secondary={f.comment ?? ''}
+                      time={f.created_at}
+                    />
+                  ))}
+                </ActivityList>
 
-              <ActivityList title="APPLAUDS" emptyLabel="No applauds yet." accent="var(--gold-500)">
-                {applauds.map(a => (
-                  <ActivityRow
-                    key={a.id}
-                    primary="Applauded"
-                    detail=""
-                    secondary=""
-                    time={a.created_at}
-                  />
-                ))}
-              </ActivityList>
-            </div>
-          </CollapsibleSection>
+                <ActivityList title="APPLAUDS" emptyLabel="No applauds yet." accent="var(--gold-500)">
+                  {applauds.map(a => (
+                    <ActivityRow
+                      key={a.id}
+                      primary="Applauded"
+                      detail=""
+                      secondary=""
+                      time={a.created_at}
+                    />
+                  ))}
+                </ActivityList>
+              </div>
+            </CollapsibleSection>
+          )}
 
           {/* TOKEN USAGE · public · only renders when receipt exists */}
           <section className="scroll-mt-28">
             <TokenEfficiencyPanel projectId={project.id} isOwner={isOwner} />
           </section>
 
-          {/* BACKSTAGE · public · locked until Encore. Default-collapsed
-              so the locked-state stub doesn't take 250px of column for
-              the 80% of projects that haven't crossed yet. */}
-          <CollapsibleSection
-            id="backstage"
-            label="BACKSTAGE"
-            hint="Failures · decisions · delegation · the data nobody else captures."
-            summary={scoreHidden
-              ? 'Locked until re-audit'
-              : (project.score_total ?? 0) >= 84
-                ? '✓ Unlocked · Phase 2 brief visible'
-                : 'Sealed until Encore'}
-          >
-            <BackstagePanel project={project} scoreHidden={scoreHidden} />
-          </CollapsibleSection>
+          {/* BACKSTAGE (Phase 2 brief lock) · hidden on status='backstage'
+              (CEO 피드백 2026-05-18) · the project is literally backstage
+              right now, so the "Sealed until Encore · public-facing Phase
+              2 brief unlocks at score 84+" framing collides with the
+              stage name and confuses the owner. Brief content for
+              owners lives in CREATOR'S NOTES below; this collapsible
+              is for visitors / on-stage projects to see "the brief
+              opens after Encore". */}
+          {project.status !== 'backstage' && (
+            <CollapsibleSection
+              id="backstage"
+              label="BACKSTAGE"
+              hint="Failures · decisions · delegation · the data nobody else captures."
+              summary={scoreHidden
+                ? 'Locked until re-audit'
+                : (project.score_total ?? 0) >= 84
+                  ? '✓ Unlocked · Phase 2 brief visible'
+                  : 'Sealed until Encore'}
+            >
+              <BackstagePanel project={project} scoreHidden={scoreHidden} />
+            </CollapsibleSection>
+          )}
 
           {/* CREATOR'S NOTES · owner only · the Phase 2 brief moat
               content (Failure Log · Decisions · Delegation · Next
