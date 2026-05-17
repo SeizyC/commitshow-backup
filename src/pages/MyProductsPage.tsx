@@ -81,7 +81,7 @@ export function MyProductsPage() {
             className="font-mono text-xs font-medium tracking-wide px-3 py-2 text-center whitespace-nowrap"
             style={{ background: 'var(--gold-500)', color: 'var(--navy-900)', border: 'none', borderRadius: '2px', textDecoration: 'none' }}
           >
-            AUDITION A NEW PROJECT →
+            ANALYZE A NEW MVP →
           </NavLink>
         </div>
 
@@ -92,16 +92,17 @@ export function MyProductsPage() {
           </div>
         ) : applications.length === 0 ? (
           <div className="card-navy p-12 text-center" style={{ borderRadius: '2px' }}>
-            <div className="font-display text-2xl font-bold mb-2" style={{ color: 'var(--cream)' }}>No auditions yet</div>
+            <div className="font-display text-2xl font-bold mb-2" style={{ color: 'var(--cream)' }}>No audits yet</div>
             <p className="font-mono text-xs mb-6" style={{ color: 'var(--text-muted)' }}>
-              Audition your first product to open its dashboard, get an Audit, and start climbing.
+              Analyze your first MVP to open its dashboard, see what it caught,
+              then iterate before auditioning onto the stage.
             </p>
             <NavLink
               to="/submit"
               className="inline-block font-mono text-xs tracking-wide px-5 py-2.5"
               style={{ background: 'var(--gold-500)', color: 'var(--navy-900)', border: 'none', borderRadius: '2px', textDecoration: 'none' }}
             >
-              AUDITION YOUR FIRST PRODUCT →
+              ANALYZE YOUR FIRST MVP →
             </NavLink>
           </div>
         ) : (

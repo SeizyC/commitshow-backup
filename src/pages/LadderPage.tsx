@@ -576,7 +576,12 @@ function pickProductsHeader(user: { id: string } | null | undefined, buckets: Me
     eyebrow:  '// PRODUCTS',
     title:    'Every audited product, ranked',
     sub:      'Seven categories. Four time windows. Score 84+ earns Encore. Live ranking updates the moment any audit finishes.',
-    ctaLabel: user ? 'ANALYZE MY MVP →' : 'AUDITION YOUR PROJECT →',
+    // §1-A ⑥ verb split · /submit triggers FREE analyze first
+    // (lands in backstage) · audition is the *later* step that flips
+    // backstage → active. So the entry CTA says "Analyze" regardless
+    // of auth state · only the actions inside BackstageSection /
+    // AuditCoachPanel use "Audition" because that's the actual flip.
+    ctaLabel: user ? 'ANALYZE MY MVP →' : 'ANALYZE A NEW MVP →',
     ctaTo:    '/submit',
   }
   if (!user || !buckets) return DEFAULT

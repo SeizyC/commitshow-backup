@@ -825,39 +825,53 @@ export function ApplicationRow({ project: p, onDeleted }: { project: Project; on
           <div className="w-full h-full flex items-center justify-center font-mono text-[10px]" style={{ color: 'var(--text-faint)' }}>NO IMG</div>
         )}
       </div>
-      <div className="p-3 flex-1 min-w-0 flex flex-col justify-between">
-        <div role="button" tabIndex={0} onClick={openDetail} onKeyDown={e => { if (e.key === 'Enter') openDetail() }} className="cursor-pointer">
+      <div className="p-3 flex-1 min-w-0 flex flex-col justify-between gap-2">
+        <div role="button" tabIndex={0} onClick={openDetail} onKeyDown={e => { if (e.key === 'Enter') openDetail() }} className="cursor-pointer min-w-0">
           <div className="font-display font-bold text-sm truncate" style={{ color: 'var(--cream)' }}>{p.project_name}</div>
           <div className="font-mono text-[10px] mt-0.5 truncate" style={{ color: 'var(--text-secondary)' }}>{p.description}</div>
         </div>
-        <div className="flex items-center justify-between mt-1 gap-2">
-          <span className="font-mono text-[10px] uppercase tracking-widest px-1.5 py-0.5" style={{
-            color: p.status === 'graduated' ? '#00D4AA' : 'var(--text-secondary)',
-            border: `1px solid ${p.status === 'graduated' ? 'rgba(0,212,170,0.35)' : 'rgba(255,255,255,0.1)'}`,
-            borderRadius: '2px',
-          }}>{p.status}</span>
-          <div className="flex items-center gap-2">
+        {/* Bottom row · stage badge + score (left, flex-1 so they keep
+            shrinking room) + trash icon (right, fixed 32px so it
+            survives any width). flex-wrap-reverse keeps the delete
+            icon visible when the row needs to stack vertically on
+            ultra-narrow viewports — score / badge wrap to a new line
+            below the icon instead of pushing it off-screen.
+            2026-05-17 fix · DELETE text label was clipped on narrow
+            two-column /me/products grid on mobile · icon-only with
+            title attribute keeps both the action AND the score
+            visible together. */}
+        <div className="flex items-center justify-between gap-2 min-w-0 flex-wrap-reverse">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <StageBadge project={p} size="xs" iconless />
             <span className="font-mono text-xs tabular-nums font-medium" style={{ color: scoreColor }}>
               {p.score_total}/100
             </span>
-            <button
-              onClick={() => { setError(''); setConfirmOpen(true) }}
-              title="Delete this product"
-              className="font-mono text-[11px] tracking-widest px-2 py-1.5"
-              style={{
-                background: 'transparent',
-                color: 'var(--text-muted)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: '2px',
-                cursor: 'pointer',
-                minHeight: '32px',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.color = 'var(--scarlet)'; e.currentTarget.style.borderColor = 'rgba(200,16,46,0.4)' }}
-              onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)' }}
-            >
-              DELETE
-            </button>
           </div>
+          <button
+            onClick={() => { setError(''); setConfirmOpen(true) }}
+            title="Delete this product"
+            aria-label="Delete this product"
+            className="flex items-center justify-center flex-shrink-0 transition-colors"
+            style={{
+              width:        32,
+              height:       32,
+              background:   'transparent',
+              color:        'var(--text-muted)',
+              border:       '1px solid rgba(255,255,255,0.08)',
+              borderRadius: '2px',
+              cursor:       'pointer',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'var(--scarlet)'; e.currentTarget.style.borderColor = 'rgba(200,16,46,0.4)' }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)' }}
+          >
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M3 6h18" />
+              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+              <path d="M10 11v6" />
+              <path d="M14 11v6" />
+            </svg>
+          </button>
         </div>
         {error && !confirmOpen && (
           <div className="font-mono text-[10px] mt-1" style={{ color: '#F87171' }}>{error}</div>
