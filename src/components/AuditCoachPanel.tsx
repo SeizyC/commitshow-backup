@@ -205,40 +205,27 @@ export function AuditCoachPanel({
     isAppForm:     (project.form_factor ?? 'unknown') === 'app' || (project.form_factor ?? 'unknown') === 'unknown',
   }), [snapshotRich, githubSignals, lighthouse, project.github_url, project.form_factor])
 
-  // Cap the visible list at 6 · more than that and the panel reads
-  // overwhelming. User finishes the top wins, re-audits, panel refreshes
-  // with the next batch.
-  const visible = items.slice(0, 6)
+  // 2026-05-17 · loop model (CEO 피드백) · was a todo-tracker with
+  // checkboxes + cumulative localStorage state across audits. Replaced
+  // with a per-audit refresh: each audit run surfaces the TOP 3 most
+  // impactful detected items, user pastes the fixes, re-audits, panel
+  // refreshes with the NEW top 3 for this audit's evidence. The static
+  // todo list was inaccurate because the catalog applicability changes
+  // every audit anyway (signals shift, problems get auto-resolved,
+  // new ones surface). 3 cards keeps focus tight on what to fix
+  // RIGHT NOW · not an overwhelming roadmap.
+  //
+  // detectQuickWins already returns items sorted by impact desc, so
+  // slicing the head gives the top by impact.
+  const TOP_N = 3
+  const visible = items.slice(0, TOP_N)
 
-  // Checked state · localStorage-backed, keyed by project id so each
-  // project keeps its own progress.
-  const [done, setDone] = useState<Set<string>>(() => loadDoneIds(project.id))
-  useEffect(() => { saveDoneIds(project.id, done) }, [project.id, done])
-
-  // Auto-prune · once an item leaves the applicable catalog (the fix
-  // landed → detect returns false), remove its id from the done set so
-  // localStorage doesn't grow indefinitely.
-  useEffect(() => {
-    const applicableIds = new Set(items.map(i => i.id))
-    let mutated = false
-    const next = new Set<string>()
-    for (const id of done) {
-      if (applicableIds.has(id)) next.add(id)
-      else mutated = true
-    }
-    if (mutated) setDone(next)
-    // intentionally only depend on items · this prunes per-snapshot
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items])
-
-  const toggle = (id: string) => setDone(prev => {
-    const next = new Set(prev)
-    if (next.has(id)) next.delete(id); else next.add(id)
-    return next
-  })
-
-  const checkedCount = [...done].filter(id => visible.some(i => i.id === id)).length
-  const totalImpact  = visible.reduce((sum, i) => done.has(i.id) ? sum + i.impact : sum, 0)
+  // Cumulative-todo localStorage state is no longer used. The
+  // load/save helpers stay imported for backward compat in case any
+  // other surface mounts a Coach instance · we silently noop here.
+  void loadDoneIds; void saveDoneIds
+  const done = new Set<string>()
+  const toggle = (_id: string) => {/* no-op · loop model · re-audit is the action */ }
 
   const currentScore = displayScore(project)
   const currentBand  = scoreBand(currentScore)
@@ -286,30 +273,29 @@ export function AuditCoachPanel({
         borderRadius: '2px',
       }}
     >
-      {/* Header strip */}
+      {/* Header strip · loop model 2026-05-17 · was "N quick wins" with
+          a cumulative tracker; now "Top 3 to fix now" with a fresh list
+          per audit. Each card shows a paste-ready snippet · user
+          pastes into their editor / AI, re-audits, the panel returns
+          with the NEW top 3 from whatever the next audit flags. */}
       <div className="px-5 py-4" style={{ borderBottom: '1px solid rgba(240,192,64,0.18)' }}>
         <div className="font-mono text-xs tracking-widest" style={{ color: 'var(--gold-500)' }}>
-          // PRE-AUDITION COACH · {visible.length} QUICK WIN{visible.length === 1 ? '' : 'S'}
+          // COACH · TOP {visible.length} TO FIX NOW
         </div>
         <h3 className="font-display font-bold text-xl mt-1" style={{ color: 'var(--cream)' }}>
-          Climb before you audition
+          Fix these {visible.length}, then re-audit
         </h3>
         <p className="font-light text-sm mt-2" style={{ color: 'var(--text-secondary)', lineHeight: 1.55 }}>
-          Each card is something we measured and didn't see. Knock out a few, hit Re-audit, and watch the score move
-          — no audition needed until you like the number.
+          Each audit surfaces the top items the engine flagged. Paste the snippet, ship the change, hit
+          re-audit — the next audit will surface its own top items based on what's left.
         </p>
-        {/* Normalization · iteration is the work. No counts, no peer
-            comparison numbers (CEO directive · the user base is still
-            small and concrete counts feel hollow). Just the message
-            that climbing in cycles is the norm, not the exception. */}
         <p className="font-mono text-[11px] mt-2" style={{ color: 'var(--text-muted)', lineHeight: 1.55 }}>
           The climb is iterative · most builders run a few cycles before they're happy with the number.
         </p>
-        {checkedCount > 0 && (
-          <div className="mt-3 font-mono text-xs" style={{ color: '#00D4AA' }}>
-            ✓ {checkedCount} marked done · ≈ +{totalImpact}pt on re-audit
-          </div>
-        )}
+        {/* Cumulative "marked done" strip removed with the loop model.
+            Was misleading: catalog applicability changes per audit so
+            the running tally never matched what the next audit
+            actually found. */}
         {/* Open Mic share · only after at least one re-audit so we're
             inviting the user to share an actual climb story, not a
             fresh empty post. previousBand is set the moment the user
@@ -417,28 +403,30 @@ export function AuditCoachPanel({
         ))}
       </ul>
 
-      {/* Re-audit CTA */}
+      {/* Re-audit CTA · loop model 2026-05-17 · always enabled (was
+          gated to checkedCount > 0 under the todo-tracker model). The
+          user is in charge of when they re-audit · their action is
+          "I shipped a fix, run again", not "I clicked enough boxes
+          to unlock the button". */}
       <div className="px-5 pb-5 pt-2 flex items-center justify-between gap-3 flex-wrap" style={{ borderTop: '1px solid rgba(240,192,64,0.15)' }}>
         <div className="font-mono text-[11px]" style={{ color: 'var(--text-muted)', lineHeight: 1.5 }}>
-          {checkedCount > 0
-            ? <>Ship your fixes, then re-audit. The 24-hour cooldown is waived for the first re-audit after a coach session.</>
-            : <>Pick one above to start. Even a 5-minute fix usually nets the +pt the chip promises.</>}
+          Ship a fix, then re-audit · the next audit surfaces its own top {visible.length}. The 24-hour cooldown is waived between coach cycles.
         </div>
         <button
           type="button"
-          disabled={!onReanalyze || reanalyzing || checkedCount === 0}
+          disabled={!onReanalyze || reanalyzing}
           onClick={() => onReanalyze && onReanalyze()}
           className="px-5 py-2.5 font-mono text-xs font-medium tracking-widest whitespace-nowrap"
           style={{
-            background:   checkedCount > 0 ? 'var(--gold-500)' : 'transparent',
-            color:        checkedCount > 0 ? 'var(--navy-900)' : 'var(--text-muted)',
-            border:       checkedCount > 0 ? 'none' : '1px solid rgba(248,245,238,0.15)',
+            background:   'var(--gold-500)',
+            color:        'var(--navy-900)',
+            border:       'none',
             borderRadius: '2px',
-            cursor:       checkedCount > 0 && !reanalyzing ? 'pointer' : 'not-allowed',
+            cursor:       reanalyzing || !onReanalyze ? 'wait' : 'pointer',
             opacity:      reanalyzing ? 0.6 : 1,
           }}
         >
-          {reanalyzing ? 'RE-AUDITING…' : checkedCount > 0 ? 'RE-AUDIT NOW →' : 'CHECK ITEMS TO ENABLE'}
+          {reanalyzing ? 'RE-AUDITING…' : 'RE-AUDIT NOW →'}
         </button>
       </div>
     </div>
@@ -446,41 +434,26 @@ export function AuditCoachPanel({
 }
 
 // ── Single card row ─────────────────────────────────────────
-function CoachRow({ item, checked, onToggle }: { item: CoachItem; checked: boolean; onToggle: () => void }) {
-  const [expanded, setExpanded] = useState(false)
+function CoachRow({ item, checked: _checked, onToggle: _onToggle }: { item: CoachItem; checked: boolean; onToggle: () => void }) {
+  // 2026-05-17 loop model · `checked` + `onToggle` props kept for the
+  // call-site signature but unused. The checkbox/done-tracker is gone
+  // because each audit refreshes the top 3 from scratch (no cumulative
+  // state to track). Expanded by default — the snippet IS the value,
+  // forcing a click to see it added friction with zero upside in a
+  // 3-card panel.
+  const [expanded, setExpanded] = useState(true)
   const tone  = CATEGORY_TONE[item.category]
   const cat   = CATEGORY_LABEL[item.category]
   return (
     <li
       style={{
-        background: checked ? 'rgba(0,212,170,0.04)' : 'rgba(255,255,255,0.02)',
-        border:     `1px solid ${checked ? 'rgba(0,212,170,0.3)' : 'rgba(255,255,255,0.08)'}`,
+        background: 'rgba(255,255,255,0.02)',
+        border:     '1px solid rgba(255,255,255,0.08)',
         borderRadius: '2px',
       }}
     >
       <div className="px-3 py-3 flex items-start gap-3">
-        {/* Checkbox */}
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onToggle() }}
-          aria-label={checked ? 'Mark as not done' : 'Mark as done'}
-          className="flex items-center justify-center flex-shrink-0 mt-0.5"
-          style={{
-            width:        20,
-            height:       20,
-            background:   checked ? '#00D4AA' : 'transparent',
-            border:       `1.5px solid ${checked ? '#00D4AA' : 'rgba(248,245,238,0.3)'}`,
-            borderRadius: '2px',
-            cursor:       'pointer',
-            color:        'var(--navy-900)',
-            fontSize:     12,
-            fontWeight:   700,
-          }}
-        >
-          {checked ? '✓' : ''}
-        </button>
-
-        {/* Body · click to expand */}
+        {/* Body · click to collapse/expand */}
         <button
           type="button"
           onClick={() => setExpanded(v => !v)}
@@ -490,10 +463,7 @@ function CoachRow({ item, checked, onToggle }: { item: CoachItem; checked: boole
           <div className="flex items-baseline justify-between gap-2 flex-wrap">
             <span
               className="font-display font-bold text-base"
-              style={{
-                color:           checked ? 'var(--text-secondary)' : 'var(--cream)',
-                textDecoration:  checked ? 'line-through' : 'none',
-              }}
+              style={{ color: 'var(--cream)' }}
             >
               {item.title}
             </span>
