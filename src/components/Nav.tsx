@@ -223,6 +223,24 @@ export function Nav() {
               </button>
 
               {menuOpen && (
+                <>
+                  {/* Backdrop scrim · 2026-05-17 · dims the rest of the
+                      page so the dropdown reads as the focus and an
+                      outside-tap closes it without colliding with
+                      underneath buttons. z-40 sits below the dropdown
+                      (z-50 implicit on the dropdown via its parent
+                      stacking context) but above all page content. */}
+                  <div
+                    aria-hidden="true"
+                    onClick={() => setMenuOpen(false)}
+                    style={{
+                      position: 'fixed',
+                      inset:    0,
+                      background: 'rgba(6,12,26,0.55)',
+                      backdropFilter: 'blur(2px)',
+                      zIndex:   40,
+                    }}
+                  />
                 <div
                   className="absolute right-0 top-full mt-2 w-56 p-2"
                   style={{
@@ -230,6 +248,7 @@ export function Nav() {
                     backdropFilter: 'blur(16px)',
                     border: '1px solid rgba(240,192,64,0.2)',
                     borderRadius: '2px',
+                    zIndex: 50,
                   }}
                 >
                   <div className="px-3 py-2 mb-1" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
@@ -374,6 +393,7 @@ export function Nav() {
                     Sign out
                   </button>
                 </div>
+                </>
               )}
             </div>
           )}

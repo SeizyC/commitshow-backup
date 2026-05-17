@@ -170,7 +170,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         provider,
         options: { redirectTo: window.location.origin },
       }).then(r => ({ error: r.error })),
-    signOut: async () => { await supabase.auth.signOut() },
+    signOut: async () => {
+      // Sign-out hardening (2026-05-17 audit) · three concerns:
+      //
+      //   1. Per-user client-side caches need to clear so the next user
+      //      on this browser doesn't inherit privileges. ADMIN_TOKEN
+      //      ('commitshow.admin.token') is the highest-impact leak —
+      //      it grants force-reaudit and rate-limit bypass via the
+      //      __admin_run Edge Function. Cleared explicitly before the
+      //      session flip so it can't race with re-render.
+      //
+      //   2. Session flip leaves the user on whatever member-only page
+      //      they were on (/me · /backstage · /admin · /me/products).
+      //      Even with RLS denying their stale token, those pages
+      //      render empty states or partial UI that read as bugs. A
+      //      hard navigate to '/' guarantees they land on the public
+      //      surface with no stale React state carried over (better
+      //      than react-router navigate, which keeps the in-memory
+      //      cache around).
+      //
+      //   3. supabase.auth.signOut() returns { error } on transient
+      //      failure (network). Per Supabase v2 spec the LOCAL session
+      //      is always cleared even when the server call fails, so we
+      //      proceed with cleanup + redirect even on error — just log
+      //      it for telemetry.
+      const { error } = await supabase.auth.signOut()
+      if (error) console.error('[auth] signOut returned error (local session cleared anyway)', error)
+      try { localStorage.removeItem('commitshow.admin.token') } catch { /* private mode */ }
+      if (typeof window !== 'undefined') window.location.assign('/')
+    },
     updateMember: async (patch) => {
       if (!session?.user?.id) return { error: 'Not signed in' }
       const { error, data } = await supabase
