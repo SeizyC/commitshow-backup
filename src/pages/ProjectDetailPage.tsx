@@ -1075,41 +1075,16 @@ export function ProjectDetailPage() {
 
                   return <ShareOnXMenu options={options} url={projectUrl} />
                 })()}
-                {/* Forecast voting CTA — §4 emoji CTA carve-out.
-                    Only renders for can-forecast viewers during the
-                    voting phase. Engagement chips below are separate
-                    (always visible · click count → list modal). */}
-                {canForecast && isVotingPhase && (() => {
-                  const predicted    = forecasts.filter(f => typeof f.predicted_score === 'number')
-                  const forecastN    = forecasts.length
-                  const avgPredicted = predicted.length === 0
-                    ? null
-                    : Math.round(predicted.reduce((s, f) => s + (f.predicted_score ?? 0), 0) / predicted.length)
-                  return (
-                    <button
-                      onClick={() => setForecastOpen(true)}
-                      className="font-mono text-xs font-medium tracking-wide px-3 py-1.5"
-                      style={{ background: 'rgba(240,192,64,0.08)', color: 'var(--gold-500)', border: '1px solid rgba(240,192,64,0.3)', borderRadius: '2px', cursor: 'pointer' }}
-                      title={forecastN === 0
-                        ? 'No forecasts yet · be the first to call it'
-                        : avgPredicted == null
-                          ? `${forecastN} forecast${forecastN === 1 ? '' : 's'} · no predicted scores yet`
-                          : `${forecastN} forecast${forecastN === 1 ? '' : 's'} · room is calling ${avgPredicted}/100 on average`}
-                    >
-                      <span className="inline-flex items-center justify-center gap-1.5">
-                        <span aria-hidden="true" style={{ fontSize: 14, lineHeight: 1 }}>🎯</span>
-                        <span>FORECAST</span>
-                      </span>
-                    </button>
-                  )
-                })()}
-
                 {/* Engagement chips · 2026-05-19 · CEO 피드백 ·
                     "박수 버튼은 아이콘과 숫자 분리해서 숫자 누르면
-                    박수친 사람들 보여주게 · views 와 forecasts 도
-                    상단으로 이동". Owner and visitor both see the
-                    chips · only the applaud toggle itself is disabled
-                    for owner (can't applaud own content). */}
+                    박수친 사람들 보여주게 · forecasts 버튼도 숫자와
+                    분리해서 줘 · views 도 상단으로 이동". Owner and
+                    visitor both see the chips · only the applaud toggle
+                    itself is disabled for owner (can't applaud own
+                    content). Forecast follows the same split layout:
+                    🎯 icon (cast a forecast · gated to voting-phase
+                    forecasters) + adjacent count pill (opens the
+                    forecasters list modal). */}
                 <ApplaudButton
                   targetType="product"
                   targetId={project.id}
@@ -1120,24 +1095,71 @@ export function ProjectDetailPage() {
                   onChange={() => fetchProjectApplauds(project.id).then(setApplauds)}
                   onCountClick={applauds.length > 0 ? () => setPulseModal('applauds') : undefined}
                 />
-                {forecasts.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setPulseModal('forecasts')}
-                    title={`See ${forecasts.length} forecaster${forecasts.length === 1 ? '' : 's'}`}
-                    className="font-mono text-xs tracking-wide px-3 py-1.5 inline-flex items-center gap-1.5"
-                    style={{
-                      background:   'rgba(96,165,250,0.06)',
-                      color:        'rgba(96,165,250,0.95)',
-                      border:       '1px solid rgba(96,165,250,0.28)',
-                      borderRadius: '2px',
-                      cursor:       'pointer',
-                    }}
-                  >
-                    <span style={{ opacity: 0.75 }}>FORECASTS</span>
-                    <span className="tabular-nums" style={{ color: 'var(--cream)' }}>{forecasts.length}</span>
-                  </button>
-                )}
+
+                {(() => {
+                  const forecastN     = forecasts.length
+                  const canCast       = canForecast && isVotingPhase
+                  // Hide the whole forecast block when no action is
+                  // available AND no forecasts exist yet (nothing to
+                  // show · keeps the row tidy on fresh projects).
+                  if (!canCast && forecastN === 0) return null
+                  const predicted     = forecasts.filter(f => typeof f.predicted_score === 'number')
+                  const avgPredicted  = predicted.length === 0
+                    ? null
+                    : Math.round(predicted.reduce((s, f) => s + (f.predicted_score ?? 0), 0) / predicted.length)
+                  const iconTitle = canCast
+                    ? (forecastN === 0
+                        ? 'No forecasts yet · be the first to call it'
+                        : 'Cast a forecast')
+                    : (forecastN === 0
+                        ? 'No forecasts yet'
+                        : avgPredicted == null
+                          ? `${forecastN} forecast${forecastN === 1 ? '' : 's'} · no predicted scores yet`
+                          : `${forecastN} forecast${forecastN === 1 ? '' : 's'} · room is calling ${avgPredicted}/100 on average`)
+                  const countTitle = `See ${forecastN} forecaster${forecastN === 1 ? '' : 's'}`
+                                   + (avgPredicted != null ? ` · avg ${avgPredicted}/100` : '')
+                  return (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4em' }}>
+                      <button
+                        type="button"
+                        onClick={canCast ? () => setForecastOpen(true) : undefined}
+                        disabled={!canCast}
+                        title={iconTitle}
+                        aria-label={iconTitle}
+                        className="font-mono text-xs font-medium tracking-wide px-3 py-1.5 inline-flex items-center justify-center gap-1.5"
+                        style={{
+                          background:   canCast ? 'rgba(240,192,64,0.08)' : 'transparent',
+                          color:        canCast ? 'var(--gold-500)' : 'var(--text-label)',
+                          border:       `1px solid ${canCast ? 'rgba(240,192,64,0.3)' : 'rgba(255,255,255,0.12)'}`,
+                          borderRadius: '2px',
+                          cursor:       canCast ? 'pointer' : 'not-allowed',
+                          opacity:      canCast ? 1 : 0.7,
+                        }}
+                      >
+                        <span aria-hidden="true" style={{ fontSize: 14, lineHeight: 1 }}>🎯</span>
+                        <span>FORECAST</span>
+                      </button>
+                      {forecastN > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setPulseModal('forecasts')}
+                          title={countTitle}
+                          aria-label={countTitle}
+                          className="font-mono text-xs tracking-wide px-3 py-1.5 inline-flex items-center gap-1.5"
+                          style={{
+                            background:   'rgba(96,165,250,0.06)',
+                            color:        'rgba(96,165,250,0.95)',
+                            border:       '1px solid rgba(96,165,250,0.28)',
+                            borderRadius: '2px',
+                            cursor:       'pointer',
+                          }}
+                        >
+                          <span className="tabular-nums" style={{ color: 'var(--cream)' }}>{forecastN}</span>
+                        </button>
+                      )}
+                    </span>
+                  )
+                })()}
                 {viewsCount != null && viewsCount > 0 && (
                   <span
                     title={`${viewsCount.toLocaleString()} unique view${viewsCount === 1 ? '' : 's'}`}
