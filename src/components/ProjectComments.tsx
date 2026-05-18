@@ -1,11 +1,14 @@
 // Project comments · YouTube-mobile pattern applied to ALL viewports.
 //
 // The component renders ONE thing inline: a collapsed preview card showing
-// up to 3 recent comments. Tapping anywhere on the card opens a right-side
-// drawer with the full thread + composer.
-//   · Mobile (< sm): the drawer is full-screen (true bottom-sheet feel).
-//   · Desktop (≥ sm): the drawer slides in from the right, max-w-xl wide,
-//     full viewport height. Backdrop dims the rest of the page.
+// up to 2 recent comments (CEO 피드백 2026-05-19). Tapping anywhere on the
+// card opens a bottom-sheet drawer with the full thread + composer.
+//   · All viewports: drawer slides UP from the bottom with a grab handle
+//     at the top. Caps height at 88vh so the page header behind it stays
+//     hinted. Backdrop dims the rest of the page.
+//   · Previous behaviour (right-side drawer) replaced 2026-05-19 — the
+//     bottom-up sheet reads as one continuous gesture from the inline
+//     preview card and feels native on mobile.
 //
 // MVP scope: top-level comments only (no nested replies / upvotes / edit yet).
 // ApplaudButton on each comment via target_type='comment' (existing
@@ -42,7 +45,9 @@ interface ProjectCommentsProps {
 }
 
 const MAX_LEN = 1000
-const PREVIEW_COUNT = 3
+// 2026-05-19 · CEO 피드백 · preview shrunk from 3 → 2 so the inline
+// card stays compact (the bottom-sheet drawer carries the full list).
+const PREVIEW_COUNT = 2
 
 export function ProjectComments({ projectId, viewerMemberId, hidePreview = false }: ProjectCommentsProps) {
   const [rows, setRows] = useState<CommentRow[]>([])
@@ -220,7 +225,11 @@ export function ProjectComments({ projectId, viewerMemberId, hidePreview = false
   )
 }
 
-// ── Drawer · slides in from the right · width-capped on desktop ─────
+// ── Drawer · 2026-05-19 · slides UP from the bottom · grab handle on top ─
+// Previous right-side desktop drawer replaced after CEO 피드백 ·
+// "우측에서 나오는 모달이 아닌 아래에서 올라오는 핸들이 있는
+//  드라워 형식으로 변경". Reads as one continuous gesture from the
+// preview card above and feels native on mobile.
 function Drawer({
   projectId, viewerMemberId, topLevel, repliesByParent, totalCount, loading,
   onClose, onPosted, onDeleted,
@@ -254,7 +263,7 @@ function Drawer({
     if (closing) return
     setClosing(true)
     setEntered(false)
-    setTimeout(onClose, 220) // matches the CSS transition below
+    setTimeout(onClose, 240) // matches the CSS transition below
   }
 
   useEffect(() => {
@@ -269,27 +278,52 @@ function Drawer({
       role="dialog"
       aria-modal="true"
       aria-label="Comments"
-      className="fixed inset-0 z-50 flex justify-end"
+      className="fixed inset-0 z-50 flex items-end justify-center"
       onClick={(e) => { if (e.target === e.currentTarget) requestClose() }}
       style={{
         background: entered ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0)',
-        transition: 'background 220ms ease',
+        transition: 'background 240ms ease',
       }}
     >
       <div
-        className="
-          flex flex-col
-          w-full h-full
-          sm:max-w-xl
-        "
+        className="flex flex-col w-full"
         style={{
           background:    'var(--navy-950)',
-          borderLeft:    '1px solid rgba(255,255,255,0.08)',
-          boxShadow:     entered ? '-12px 0 40px rgba(0,0,0,0.45)' : 'none',
-          transform:     entered ? 'translateX(0)' : 'translateX(100%)',
-          transition:    'transform 220ms cubic-bezier(0.32,0.72,0,1), box-shadow 220ms ease',
+          borderTop:     '1px solid rgba(255,255,255,0.08)',
+          borderTopLeftRadius:  '12px',
+          borderTopRightRadius: '12px',
+          boxShadow:     entered ? '0 -12px 40px rgba(0,0,0,0.45)' : 'none',
+          maxHeight:     '88vh',
+          height:        '88vh',
+          transform:     entered ? 'translateY(0)' : 'translateY(100%)',
+          transition:    'transform 240ms cubic-bezier(0.32,0.72,0,1), box-shadow 240ms ease',
         }}
       >
+        {/* Grab handle · also acts as a tap-to-close affordance */}
+        <button
+          type="button"
+          onClick={requestClose}
+          aria-label="Close comments"
+          className="shrink-0 w-full flex items-center justify-center"
+          style={{
+            background: 'transparent',
+            border:     'none',
+            padding:    '8px 0 6px',
+            cursor:     'pointer',
+          }}
+        >
+          <span
+            aria-hidden="true"
+            style={{
+              display:      'block',
+              width:        44,
+              height:       4,
+              borderRadius: 999,
+              background:   'rgba(255,255,255,0.22)',
+            }}
+          />
+        </button>
+
         {/* header */}
         <div
           className="flex items-center px-4 py-3 shrink-0"

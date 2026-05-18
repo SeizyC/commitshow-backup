@@ -33,7 +33,7 @@ import { OwnerNextStepBanner } from '../components/OwnerNextStepBanner'
 import { MarketPositionForm } from '../components/MarketPositionForm'
 import { AboutProjectSection } from '../components/AboutProjectSection'
 import { MakerIntroBanner } from '../components/MakerIntroBanner'
-import { CommunityPulseStrip } from '../components/CommunityPulseStrip'
+import { PulseListModal } from '../components/PulseListModal'
 import { AnalysisProgressModal } from '../components/AnalysisProgressModal'
 import { ScoreTimeline } from '../components/ScoreTimeline'
 import { VibeConcernsPanel } from '../components/VibeConcernsPanel'
@@ -113,6 +113,13 @@ export function ProjectDetailPage() {
   const [applauds, setApplauds] = useState<ApplaudRow[]>([])
   const [loading, setLoading] = useState(true)
   const [forecastOpen, setForecastOpen] = useState(false)
+  // 2026-05-19 · CEO 피드백 · pulse stats lifted from CommunityPulseStrip
+  // into the hero engagement row. VIEWS / FORECASTS / APPLAUDS chips sit
+  // next to the applaud toggle; clicking the FORECASTS or APPLAUDS count
+  // opens PulseListModal (the comments tile is gone — comments preview
+  // lives in its own block below).
+  const [viewsCount, setViewsCount] = useState<number | null>(null)
+  const [pulseModal, setPulseModal] = useState<'applauds' | 'forecasts' | null>(null)
   const [editOpen, setEditOpen] = useState(false)
   // Hero-level Re-audit state. Lives here (not inside AnalysisResultCard)
   // so the Re-audit affordance can sit in the title block alongside EDIT
@@ -288,6 +295,20 @@ export function ProjectDetailPage() {
       setTimeline(tlPts)
       setForecasts(fcRows)
       setApplauds(apRows)
+      // 2026-05-19 · CEO 피드백 · top engagement row needs view count.
+      // Fire-and-forget track_project_view (daily-deduped server-side)
+      // then refetch project_pulse_stats so the VIEWS chip reflects this
+      // visit. Same pattern CommunityPulseStrip used before it was
+      // dissolved into the hero row.
+      void (async () => {
+        try { await supabase.rpc('track_project_view', { p_project_id: proj.id }) } catch {}
+        try {
+          const { data: pulse } = await supabase.rpc('project_pulse_stats', { p_project_id: proj.id })
+          if (pulse && typeof (pulse as { views?: number }).views === 'number') {
+            setViewsCount((pulse as { views: number }).views)
+          }
+        } catch {}
+      })()
       if (proj.creator_id) {
         fetchAuditionStreak(proj.creator_id).then(s => setStreakClimbs(s.climbs)).catch(() => {})
       }
@@ -614,15 +635,16 @@ export function ProjectDetailPage() {
   return (
     <section className="relative z-10 pt-20 pb-16 px-4 md:px-6 lg:px-8 min-h-screen">
       <div className="max-w-5xl mx-auto">
-        {/* Back link */}
+        {/* Back link · /projects redirects to /products · CEO 피드백
+            2026-05-19 · label updated to canonical destination. */}
         <button
-          onClick={() => navigate('/projects')}
+          onClick={() => navigate('/products')}
           className="mb-5 font-mono text-xs tracking-wide"
           style={{ background: 'transparent', color: 'rgba(248,245,238,0.5)', border: 'none', cursor: 'pointer' }}
           onMouseEnter={e => (e.currentTarget.style.color = 'var(--gold-500)')}
           onMouseLeave={e => (e.currentTarget.style.color = 'rgba(248,245,238,0.5)')}
         >
-          ← BACK TO PROJECTS
+          ← BACK TO PRODUCTS
         </button>
 
         {/* ── Walk-on preview banner · status='preview' + creator_id=null ──
@@ -1053,10 +1075,10 @@ export function ProjectDetailPage() {
 
                   return <ShareOnXMenu options={options} url={projectUrl} />
                 })()}
-                {/* Forecast + Applaud — §4 emoji CTA carve-out.
-                    Forecast button surfaces participation count + avg
-                    of all submitted predicted_score values so a viewer
-                    sees what the room is calling before tapping in. */}
+                {/* Forecast voting CTA — §4 emoji CTA carve-out.
+                    Only renders for can-forecast viewers during the
+                    voting phase. Engagement chips below are separate
+                    (always visible · click count → list modal). */}
                 {canForecast && isVotingPhase && (() => {
                   const predicted    = forecasts.filter(f => typeof f.predicted_score === 'number')
                   const forecastN    = forecasts.length
@@ -1077,38 +1099,81 @@ export function ProjectDetailPage() {
                       <span className="inline-flex items-center justify-center gap-1.5">
                         <span aria-hidden="true" style={{ fontSize: 14, lineHeight: 1 }}>🎯</span>
                         <span>FORECAST</span>
-                        {forecastN > 0 && (
-                          <span className="font-mono text-[10px] tabular-nums" style={{ color: 'var(--gold-500)', opacity: 0.8 }}>
-                            · {forecastN}
-                            {avgPredicted != null && <> · avg {avgPredicted}</>}
-                          </span>
-                        )}
                       </span>
                     </button>
                   )
                 })()}
-                {!isOwner && (
-                  <ApplaudButton
-                    targetType="product"
-                    targetId={project.id}
-                    viewerMemberId={user?.id ?? null}
-                    isOwnContent={isOwner}
-                    size="sm"
-                    variant="emoji"
-                    onChange={() => fetchProjectApplauds(project.id).then(setApplauds)}
-                  />
+
+                {/* Engagement chips · 2026-05-19 · CEO 피드백 ·
+                    "박수 버튼은 아이콘과 숫자 분리해서 숫자 누르면
+                    박수친 사람들 보여주게 · views 와 forecasts 도
+                    상단으로 이동". Owner and visitor both see the
+                    chips · only the applaud toggle itself is disabled
+                    for owner (can't applaud own content). */}
+                <ApplaudButton
+                  targetType="product"
+                  targetId={project.id}
+                  viewerMemberId={user?.id ?? null}
+                  isOwnContent={isOwner}
+                  size="sm"
+                  variant="emoji"
+                  onChange={() => fetchProjectApplauds(project.id).then(setApplauds)}
+                  onCountClick={applauds.length > 0 ? () => setPulseModal('applauds') : undefined}
+                />
+                {forecasts.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setPulseModal('forecasts')}
+                    title={`See ${forecasts.length} forecaster${forecasts.length === 1 ? '' : 's'}`}
+                    className="font-mono text-xs tracking-wide px-3 py-1.5 inline-flex items-center gap-1.5"
+                    style={{
+                      background:   'rgba(96,165,250,0.06)',
+                      color:        'rgba(96,165,250,0.95)',
+                      border:       '1px solid rgba(96,165,250,0.28)',
+                      borderRadius: '2px',
+                      cursor:       'pointer',
+                    }}
+                  >
+                    <span style={{ opacity: 0.75 }}>FORECASTS</span>
+                    <span className="tabular-nums" style={{ color: 'var(--cream)' }}>{forecasts.length}</span>
+                  </button>
+                )}
+                {viewsCount != null && viewsCount > 0 && (
+                  <span
+                    title={`${viewsCount.toLocaleString()} unique view${viewsCount === 1 ? '' : 's'}`}
+                    className="font-mono text-xs tracking-wide px-3 py-1.5 inline-flex items-center gap-1.5"
+                    style={{
+                      background:   'rgba(255,255,255,0.03)',
+                      color:        'var(--text-secondary)',
+                      border:       '1px solid rgba(255,255,255,0.10)',
+                      borderRadius: '2px',
+                    }}
+                  >
+                    <span style={{ opacity: 0.70 }}>VIEWS</span>
+                    <span className="tabular-nums" style={{ color: 'var(--cream)' }}>{viewsCount.toLocaleString()}</span>
+                  </span>
                 )}
               </div>
             </div>
           </div>
         </header>
 
-        {/* ── Community pulse · 4-tile mini stats (applauds · comments ·
-              forecasts · views). Surfaces social signal weight before
-              the deep audit body. Each tile scrolls to its section.
-              isOwner gates the COMMENTS notification dot · visitors
-              don't get it (no skin in the thread). */}
-        <CommunityPulseStrip projectId={project.id} isOwner={isOwner} />
+        {/* 2026-05-19 · CEO 피드백 · CommunityPulseStrip dissolved.
+            VIEWS · FORECASTS · APPLAUDS moved into the hero engagement
+            row above (click count → PulseListModal). Comments preview
+            now sits in its own block below the score banner (rendered
+            via <ProjectComments> with hidePreview unset · 2 recent
+            inline + bottom-sheet drawer on tap). */}
+
+        {/* Pulse list modal · shared trigger for the APPLAUDS / FORECASTS
+            count chips up in the hero. */}
+        {pulseModal && (
+          <PulseListModal
+            projectId={project.id}
+            mode={pulseModal}
+            onClose={() => setPulseModal(null)}
+          />
+        )}
 
         {/* ── Scan strip · at-a-glance metrics ──
               URL fast lane projects (preview · no github_url) get the /33
@@ -1246,15 +1311,15 @@ export function ProjectDetailPage() {
           />
         )}
 
-        {/* ── ProjectComments mounts the right-side drawer + #comments
-              hash listener · the inline preview card is hidden
-              (hidePreview) because CommunityPulseStrip's COMMENTS
-              tile is the single entry point now. Drawer still opens
-              when the tile is clicked (sets hash '#comments'). */}
+        {/* ── 2026-05-19 · CEO 피드백 · CommunityPulseStrip dropped.
+              The comments tile is now an inline preview card showing
+              the 2 most recent comments. Tapping anywhere on the card
+              opens the bottom-sheet drawer (slides up with a handle).
+              VIEWS · FORECASTS · APPLAUDS chips relocated to the hero
+              engagement row above. */}
         <ProjectComments
           projectId={project.id}
           viewerMemberId={member?.id ?? null}
-          hidePreview
         />
 
         {/* RecentActivityCard removed 2026-05-11 · the pulse strip's

@@ -31,6 +31,13 @@ export interface ApplaudButtonProps {
   hideCount?:     boolean
   // Override button label ('Applaud' default).
   label?:         string
+  // 2026-05-19 · when set, the count renders as a SEPARATE adjacent
+  // clickable pill (not inside the main applaud toggle), and clicking
+  // the count fires onCountClick. Lets the parent open an "applauders
+  // list" modal without conflicting with the applaud toggle on the
+  // icon · CEO 피드백 · "박수 아이콘과 숫자 분리해서 숫자 부분 누르면
+  // 박수친 사람들 보여주게".
+  onCountClick?:  () => void
 }
 
 export function ApplaudButton({
@@ -44,6 +51,7 @@ export function ApplaudButton({
   onChange,
   hideCount = false,
   label,
+  onCountClick,
 }: ApplaudButtonProps) {
   const [active, setActive]   = useState(false)
   const [count, setCount]     = useState(0)
@@ -118,7 +126,16 @@ export function ApplaudButton({
   const emojiSize = size === 'sm' ? 14  : size === 'lg' ? 24    : 16
   const iconSize  = size === 'sm' ? 12  : size === 'lg' ? 18    : 14
 
-  return (
+  // Split-mode · 2026-05-19 · when onCountClick is supplied, the
+  // count renders as a SEPARATE adjacent pill so it gets its own
+  // click target (open applauders modal) without colliding with the
+  // applaud toggle on the icon. Inline-count rendering inside the
+  // main button is suppressed in this mode. Single-button mode
+  // (default) keeps the original behaviour.
+  const showInlineCount   = !hideCount && !onCountClick
+  const showExternalCount = !hideCount && !!onCountClick
+
+  const applaudBtn = (
     <button
       type="button"
       onClick={onClick}
@@ -126,7 +143,6 @@ export function ApplaudButton({
       title={error ?? tooltip}
       aria-pressed={active}
       aria-label={tooltip}
-      className={className}
       style={{
         display:       'inline-flex',
         alignItems:    'center',
@@ -179,9 +195,52 @@ export function ApplaudButton({
         <IconApplaud size={iconSize} />
       )}
       {label && <span>{label}</span>}
-      {!hideCount && (
+      {showInlineCount && (
         <span className="tabular-nums">{count}</span>
       )}
     </button>
+  )
+
+  if (!showExternalCount) {
+    return <span className={className}>{applaudBtn}</span>
+  }
+
+  return (
+    <span className={className} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4em' }}>
+      {applaudBtn}
+      <button
+        type="button"
+        onClick={() => onCountClick?.()}
+        title={`See who applauded · ${count}`}
+        aria-label={`See ${count} applauder${count === 1 ? '' : 's'}`}
+        disabled={count === 0}
+        style={{
+          display:       'inline-flex',
+          alignItems:    'center',
+          padding:       `${padY}rem ${padX * 0.75}rem`,
+          fontFamily:    'DM Mono, monospace',
+          fontSize,
+          lineHeight:    1,
+          background:    'transparent',
+          color:         count > 0 ? 'var(--cream)' : 'var(--text-muted)',
+          border:        '1px solid rgba(255,255,255,0.12)',
+          borderRadius:  '2px',
+          cursor:        count > 0 ? 'pointer' : 'default',
+          transition:    'color 120ms, border-color 120ms',
+        }}
+        onMouseEnter={e => {
+          if (count === 0) return
+          e.currentTarget.style.borderColor = 'rgba(240,192,64,0.45)'
+          e.currentTarget.style.color = 'var(--gold-500)'
+        }}
+        onMouseLeave={e => {
+          if (count === 0) return
+          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'
+          e.currentTarget.style.color = 'var(--cream)'
+        }}
+      >
+        <span className="tabular-nums">{count}</span>
+      </button>
+    </span>
   )
 }
