@@ -93,7 +93,10 @@ const BAND_RANK: Record<string, number> = {
 export function AuditCoachPanel({
   project, snapshotRich, lighthouse, githubSignals,
   onReanalyze, reanalyzing = false, previousBand = null,
-  onAuditioned, onPolishNeeded,
+  onAuditioned,
+  // onPolishNeeded prop kept for API compat · 2026-05-19 no longer
+  // invoked (polish gate dropped · audit-then-stage is one click now).
+  onPolishNeeded: _onPolishNeeded,
 }: AuditCoachPanelProps) {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -137,25 +140,12 @@ export function AuditCoachPanel({
   }, [user?.id])
 
   const auditionNow = async () => {
-    // Polish gate · same rule as BackstageSection on /me · description
-    // + at least one image are required for the public stage card.
-    // Polish logic lives in one place (BackstagePolishGate) · the Coach
-    // just routes the user there when the card isn't ready. Keeps the
-    // gate from being duplicated across surfaces.
-    const hasDescription = !!(project.description && project.description.trim().length > 0)
-    const hasImages      = Array.isArray(project.images) && project.images.length > 0
-    if (!hasDescription || !hasImages) {
-      // 2026-05-17 · prefer inline polish gate via parent callback so
-      // the user stays on the management hub. Falls back to the
-      // legacy navigate path for surfaces that haven't wired the
-      // callback yet.
-      if (onPolishNeeded) {
-        onPolishNeeded()
-      } else {
-        navigate('/me?polish=' + project.id)
-      }
-      return
-    }
+    // 2026-05-19 CEO 피드백 · "분석 후부터 바로 가능하게 하자" —
+    // dropped the description+image polish guard. Right after the
+    // initial audit the creator can step on stage without filling
+    // anything else. They can polish the public card via EDIT later.
+    // onPolishNeeded callback is left in the prop surface (no-op now)
+    // so callers don't break · we just stopped invoking it here.
     setAuditionBusy(true)
     setAuditionError(null)
     try {

@@ -1,22 +1,15 @@
-// BackstagePolishGate · the "you can't take a blank card on stage"
-// guard rail (2026-05-16).
+// BackstagePolishGate · OPTIONAL polish form for the public stage
+// card (2026-05-16 · downgraded from blocker → polish prompt on
+// 2026-05-19 per CEO 피드백 "분석 후부터 바로 가능하게 하자").
 //
-// Flow context: the audit-then-audition split (§16.2) puts the
-// audition click on /me's BackstageSection. The result page no
-// longer pushes audition CTAs · the creator drives that step when
-// they're ready. But "ready" means the public card needs to be
-// presentable — a description + at least one image — so the
-// audience on stage has something to look at.
-//
-// This gate renders inline below a backstage row when the creator
-// clicks "PUT ON AUDITION STAGE" and the projects row is missing
-// description or images. The save action writes both fields to
-// projects then immediately fires audition_project, so the user
-// experiences one button click that does the right composite work.
-//
-// If both fields are already filled, BackstageSection skips this
-// gate entirely and goes straight to audition_project · the one-
-// click path stays one click for repeat creators.
+// History: this used to be a hard guard rail — audition couldn't run
+// until description + image were saved. That blocked creators who
+// wanted to step on stage immediately after analysis and polish the
+// card later. As of 2026-05-19 the audition path no longer routes
+// here · component is kept as a soft polish helper that callers may
+// reopen via an EDIT-style affordance. The "SAVE & PUT ON STAGE"
+// button still works for the case where someone explicitly wants to
+// do both at once.
 
 import { useState } from 'react'
 import { supabase, type Project, type ProjectImage } from '../lib/supabase'
@@ -94,29 +87,14 @@ export function BackstagePolishGate({ project, onSavedAndAuditioned, onCancel, o
       }}
     >
       <div className="font-mono text-xs tracking-widest mb-2" style={{ color: 'var(--gold-500)' }}>
-        // STAGE CARD · ALMOST READY
+        // POLISH YOUR STAGE CARD
       </div>
       <h4 className="font-display font-bold text-lg mb-1" style={{ color: 'var(--cream)' }}>
-        Add a description + image first
+        Add a description + image
       </h4>
-      <p className="font-light text-sm mb-3" style={{ color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+      <p className="font-light text-sm mb-5" style={{ color: 'var(--text-secondary)', lineHeight: 1.55 }}>
         These show on your public card · what other creators and Scouts see before they click through.
-        One sentence and one screenshot is plenty to start with.
-      </p>
-      {/* Publish-to-lane disclosure · once description ≥ 30 chars and a
-          thumbnail are set, the second audit on this project promotes
-          it onto /products' public BACKSTAGE lane (RLS migration
-          20260517_backstage_lane_public.sql). Naming the consequence
-          before the action keeps the contract explicit · creators who
-          would rather keep the project private can stop here and skip
-          the polish until they're ready to be seen. */}
-      <p className="font-mono text-[11px] mb-5 px-3 py-2" style={{
-        color: 'var(--cream)', background: 'rgba(248,245,238,0.05)',
-        border: '1px solid rgba(248,245,238,0.18)', borderRadius: '2px', lineHeight: 1.55,
-      }}>
-        Heads up · with a 30+ char description, a thumbnail, and 2+ audits,
-        this audition starts appearing on <span style={{ color: 'var(--gold-500)' }}>/products' BACKSTAGE lane</span>
-        — publicly visible, still owner-private from the league until you audition.
+        Optional · one sentence and one screenshot is plenty to start with.
       </p>
 
       <div className="mb-4">

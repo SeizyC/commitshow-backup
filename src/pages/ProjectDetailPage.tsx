@@ -41,7 +41,6 @@ import { NativeAppPanel, type NativeAppBreakdown, type NativeFootguns } from '..
 import { ForecastModal } from '../components/ForecastModal'
 import { ApplaudButton } from '../components/ApplaudButton'
 import { StageBadge } from '../components/StageBadge'
-import { BackstagePolishGate } from '../components/BackstagePolishGate'
 import { BackstageCurtainArt } from '../components/BackstageCurtainArt'
 import { deleteProject } from '../lib/projectQueries'
 import { EditProjectModal } from '../components/EditProjectModal'
@@ -161,12 +160,10 @@ export function ProjectDetailPage() {
   // it the effect would re-trigger on every snapshot update (re-audit
   // success · weekly refresh · etc) and steal scroll mid-interaction.
   const coachAutoScrolledRef = useRef(false)
-  // 2026-05-17 · owner-only management hub state. Polish gate expands
-  // inline when Coach reports the card isn't ready (no description /
-  // no thumbnail) so the user never leaves the page. Remove zone uses
-  // a two-step confirm tied to backstage status only (active rows
-  // can't be deleted — RLS gates it too, 20260517 migration).
-  const [polishOpen,      setPolishOpen]      = useState(false)
+  // 2026-05-19 · polish gate state dropped (CEO 피드백 · "분석 후부터
+  // 바로 가능하게 하자"). Audit-then-stage is one click now; the
+  // description/image polish form can still be reached via EDIT, just
+  // not as a blocker on the audition path.
   // 2026-05-18 · banner-level audition flow (CEO 피드백 · PUT ON STAGE
   // 버튼이 실제 audition_project RPC 까지 실행되어야 한다 · polish 부족
   // 시 무엇이 빠졌는지 명시). Mirrors AuditCoachPanel's auditionNow
@@ -338,28 +335,14 @@ export function ProjectDetailPage() {
   // ── Backstage banner audition handler · 2026-05-18 ──
   // CEO 피드백 · the banner's PUT ON STAGE button was a Link to
   // /backstage · users wanted it to actually run the audition right
-  // here. Mirrors AuditCoachPanel.auditionNow · polish gate first,
-  // then audition_project RPC, then refetch project so the page
-  // re-renders with status='active'. On no_ticket, hand off to the
-  // checkout endpoint (same path AuditionPromoteCard uses). Errors
-  // surface inline below the banner via auditionError state.
+  // here. 2026-05-19 CEO 피드백 · "분석 후부터 바로 가능하게 하자" —
+  // dropped the description+image polish guard. Audit done is enough
+  // to step on stage; the creator can polish the public card later
+  // via EDIT. audition_project RPC runs directly; on no_ticket we
+  // hand off to Stripe checkout (same as AuditionPromoteCard).
   const handleBannerAudition = async () => {
     if (!project || auditionBusy) return
     setAuditionError(null)
-
-    // Polish check · description + at least one image.
-    const hasDescription = !!(project.description && project.description.trim().length > 0)
-    const hasImage       = Array.isArray(project.images) && project.images.length > 0
-    if (!hasDescription || !hasImage) {
-      // Expand polish gate inline · same affordance the Coach
-      // uses · scroll it into view so the user sees what's missing.
-      setPolishOpen(true)
-      window.setTimeout(() => {
-        document.getElementById('backstage-polish-gate')?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-      }, 80)
-      return
-    }
-
     setAuditionBusy(true)
     try {
       const { data, error } = await supabase.rpc('audition_project', { p_project_id: project.id })
@@ -1269,12 +1252,6 @@ export function ProjectDetailPage() {
               onReanalyze={handleHeroReanalyze}
               reanalyzing={heroRerunBusy}
               previousBand={preReauditBand}
-              onPolishNeeded={() => {
-                setPolishOpen(true)
-                window.setTimeout(() => {
-                  document.getElementById('backstage-polish-gate')?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-                }, 80)
-              }}
               onAuditioned={async () => {
                 const refreshed = await fetchProjectById(project.id)
                 if (refreshed) setProject(refreshed)
@@ -1282,23 +1259,10 @@ export function ProjectDetailPage() {
             />
           </div>
         )}
-        {project.status === 'backstage' && isOwner && polishOpen && (
-          <div id="backstage-polish-gate" className="mt-4">
-            <BackstagePolishGate
-              project={project}
-              onSavedAndAuditioned={async () => {
-                setPolishOpen(false)
-                const refreshed = await fetchProjectById(project.id)
-                if (refreshed) setProject(refreshed)
-              }}
-              onCancel={() => setPolishOpen(false)}
-              onNoTicket={() => {
-                setPolishOpen(false)
-                navigate('/backstage')
-              }}
-            />
-          </div>
-        )}
+        {/* 2026-05-19 · BackstagePolishGate inline render block dropped.
+            Polish (description + images) is no longer a gate on the
+            audition path — creators step on stage right after analysis
+            and clean up the public card via EDIT later. */}
 
         {/* ── Owner coach · 'Next step' fix-prompt CTA, lifted out of the
               ANALYSIS section so the most actionable surface lands above
