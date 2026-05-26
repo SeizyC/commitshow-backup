@@ -3891,7 +3891,17 @@ URL FAST LANE OVERRIDE (when is_url_fast_lane=true · §15-E):
   · "Tech Diversity 0 / Maturity 0 / Hygiene 0"
   Any bullet that says "no [repo signal] detected" → DROP IT. The user already knows we can't see the repo. Listing it as a weakness reads as an indictment of the project, not a description of the audit's scope.
 - If you genuinely can't find 5 URL-side weaknesses (e.g., a pristine site like google.com), output FEWER. 0-2 weaknesses is acceptable for a top-tier site under URL Fast Lane. Don't pad.
-- DO surface, in any open spot, ONE bullet of axis:"Ops" framed as: "Repo signals not visible — link a public repo to unlock tests, CI, governance, and Brief integrity scoring." This is the upsell hook, not a weakness. Place it as the LAST weakness only when fewer than 5 URL-side weaknesses exist.`
+- DO surface, in any open spot, ONE bullet of axis:"Ops" framed as: "Repo signals not visible — link a public repo to unlock tests, CI, governance, and Brief integrity scoring." This is the upsell hook, not a weakness. Place it as the LAST weakness only when fewer than 5 URL-side weaknesses exist.
+- META-TAG ACCURACY GUARD (2026-05-23 · CEO 피드백 cross-check): when you write about social-card / og / twitter metadata gaps, describe EXACTLY what does and doesn't work. Twitter / Facebook / iMessage / Slack ALL render a text-only preview card from <title> + <meta name="description"> when og:image is absent. Do NOT write:
+  · "share previews render blank"
+  · "card doesn't render"
+  · "unshareable on social"
+  · "links look broken when shared"
+  unless title AND description are BOTH empty/missing. When og:image is the only missing piece, the card still appears — it just lacks the hero image. Correct phrasing examples:
+  · "No og:image — share previews show as text-only cards, no hero image."
+  · "Missing og:image / twitter:image — link previews fall back to text + favicon."
+  · "Open Graph image absent · social cards render without a thumbnail."
+  Same accuracy rule applies to favicon, manifest, apple-touch-icon — name what specifically degrades, not "broken / blank / unshareable".`
 
   const userPrompt = `Evaluate this project using ONLY the evidence below. Every axis score must be backed by a specific number from the evidence.
 

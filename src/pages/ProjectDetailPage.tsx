@@ -37,6 +37,7 @@ import { PulseListModal } from '../components/PulseListModal'
 import { AnalysisProgressModal } from '../components/AnalysisProgressModal'
 import { ScoreTimeline } from '../components/ScoreTimeline'
 import { VibeConcernsPanel } from '../components/VibeConcernsPanel'
+import { RuntimeSignalsPanel, type RuntimeSecurityHeaders } from '../components/RuntimeSignalsPanel'
 import { NativeAppPanel, type NativeAppBreakdown, type NativeFootguns } from '../components/NativeAppPanel'
 import { ForecastModal } from '../components/ForecastModal'
 import { ApplaudButton } from '../components/ApplaudButton'
@@ -1447,6 +1448,27 @@ export function ProjectDetailPage() {
                 <VibeConcernsPanel vibeConcerns={vibeConcerns} />
               </div>
             )}
+
+            {/* Runtime signals · 2026-05-23 · CEO 피드백 follow-up
+                ("메타데이터까진 판별되어야"). Always render when the
+                snapshot has security_headers captured — useful even
+                on platform audits, but most critical on URL fast lane
+                / fallback scans where VibeConcernsPanel is gated off.
+                Surfaces CSP · HSTS · X-Frame · X-Content-Type ·
+                Referrer · Permissions + ACAO (CORS) as PASS/WARN/FAIL
+                chips from the live URL probe alone. ACAO is captured
+                from 2026-05-23 onward · older snapshots show 'not
+                captured' for that card. */}
+            {(() => {
+              const sh = (latestSnapRaw?.rich as { security_headers?: RuntimeSecurityHeaders } | null)?.security_headers
+              if (!sh) return null
+              const introNote = currentLane === 'url_fast_lane'
+                ? 'URL fast lane · response headers + CORS from the live URL probe (source-pattern frames skipped — no repo seen).'
+                : (scannedScope ?? '').toLowerCase().startsWith('fallback')
+                  ? 'Source scan fell back · response headers + CORS from the live URL probe still apply.'
+                  : undefined
+              return <RuntimeSignalsPanel securityHeaders={sh} introNote={introNote} />
+            })()}
 
             {/* Native-app surface · only when latest snapshot detected
                 form_factor='native_app'. Shows store gates + native

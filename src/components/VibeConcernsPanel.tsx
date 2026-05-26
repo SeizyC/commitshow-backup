@@ -44,8 +44,35 @@ interface CardData {
   evidence?: string[]           // file paths or table names backing this card
 }
 
+// 2026-05-23 · CEO 피드백 follow-up (deliber.ai cross-check) ·
+// detect whether the source scan actually traversed app code. Used by
+// source-pattern frames (CORS · observability · secrets · hardcoded
+// URLs · mock data · webhook signature · mobile zoom) to flip from
+// PASS/FAIL to N/A when the scan saw nothing. We look at the strongest
+// positive signal — `observability.checked_subpackages > 0` means we
+// walked at least one package.json — combined with any RLS/index data
+// from SQL traversal. Either yields a "yes scanned" answer; both empty
+// means partial or fallback scan and default verdicts can't be trusted.
+function wasSourceScanned(vc: VibeConcerns | null | undefined): boolean {
+  if (!vc) return false
+  const pkgWalked = (vc.observability?.checked_subpackages ?? 0) > 0
+  const sqlWalked = (vc.rls_gaps?.tables ?? 0) > 0
+                 || (vc.db_indexes?.fk_columns_seen ?? 0) > 0
+  // Any positive evidence (libs present, tables present, samples found)
+  // also implies the scan ran successfully.
+  const anyPositive = (vc.observability?.libs?.length ?? 0) > 0
+                   || (vc.hardcoded_urls?.total ?? 0) > 0
+                   || (vc.mock_data?.total ?? 0) > 0
+                   || (vc.cors_permissive?.total ?? 0) > 0
+                   || (vc.secret_exposure?.total ?? 0) > 0
+                   || (vc.webhook_idempotency?.handlers_seen ?? 0) > 0
+                   || (vc.webhook_signature?.handlers_seen ?? 0) > 0
+  return pkgWalked || sqlWalked || anyPositive
+}
+
 function evaluate(vc: VibeConcerns | null | undefined): CardData[] {
   const cards: CardData[] = []
+  const sourceSeen = wasSourceScanned(vc)
   // 1. Webhook idempotency
   {
     const w = vc?.webhook_idempotency
@@ -104,8 +131,10 @@ function evaluate(vc: VibeConcerns | null | undefined): CardData[] {
   // 3. Secret client-side exposure
   {
     const s = vc?.secret_exposure
-    let status: Status = 'pass'
-    let finding = 'No service-role keys or secret tokens found in client-side files.'
+    let status: Status = sourceSeen ? 'pass' : 'na'
+    let finding = sourceSeen
+      ? 'No service-role keys or secret tokens found in client-side files.'
+      : 'Source not scanned — N/A.'
     if (s && s.total > 0) {
       status = 'fail'
       const first = s.client_violations[0]
@@ -155,8 +184,13 @@ function evaluate(vc: VibeConcerns | null | undefined): CardData[] {
   // 5. Observability
   {
     const o = vc?.observability
-    let status: Status = 'fail'
-    let finding = 'No error-tracking library in package.json (sentry / datadog / pino / winston / otel).'
+    // 2026-05-23 · default depends on whether source was actually
+    // scanned. partial / fallback audits used to print FAIL on empty
+    // libs · misleading when we never opened package.json.
+    let status: Status = sourceSeen ? 'fail' : 'na'
+    let finding = sourceSeen
+      ? 'No error-tracking library in package.json (sentry / datadog / pino / winston / otel).'
+      : 'Source not scanned — N/A.'
     if (o && o.detected) {
       status = 'pass'
       finding = `Detected: ${o.libs.join(' · ')}.`
@@ -232,8 +266,10 @@ function evaluate(vc: VibeConcerns | null | undefined): CardData[] {
   // 8. Hardcoded URLs (extension)
   {
     const h = vc?.hardcoded_urls
-    let status: Status = 'pass'
-    let finding = 'No hardcoded localhost / 127.0.0.1 URLs in scanned files.'
+    let status: Status = sourceSeen ? 'pass' : 'na'
+    let finding = sourceSeen
+      ? 'No hardcoded localhost / 127.0.0.1 URLs in scanned files.'
+      : 'Source not scanned — N/A.'
     if (h && h.total > 0) {
       status = 'warn'
       finding = `${h.total} file${h.total === 1 ? '' : 's'} with hardcoded URLs · should be env-driven.`
@@ -253,8 +289,10 @@ function evaluate(vc: VibeConcerns | null | undefined): CardData[] {
   // 9. Mock data left in production
   {
     const m = vc?.mock_data
-    let status: Status = 'pass'
-    let finding = 'No inline mock-data arrays detected in app paths.'
+    let status: Status = sourceSeen ? 'pass' : 'na'
+    let finding = sourceSeen
+      ? 'No inline mock-data arrays detected in app paths.'
+      : 'Source not scanned — N/A.'
     if (m && m.total > 0) {
       status = 'warn'
       finding = `${m.total} file${m.total === 1 ? '' : 's'} with hardcoded mock arrays · check before shipping.`
@@ -303,10 +341,17 @@ function evaluate(vc: VibeConcerns | null | undefined): CardData[] {
   }
 
   // 11. CORS permissive
+  // 2026-05-23 · runtime ACAO check now lives in RuntimeSignalsPanel
+  // (reads from rich_analysis.security_headers.acao_wildcard). This
+  // source-pattern frame stays for code-side detection (cors() config
+  // in repo files), but defaults to N/A on partial scans so we don't
+  // print PASS when we never opened the source.
   {
     const c = vc?.cors_permissive
-    let status: Status = 'pass'
-    let finding = 'No `origin: *` CORS patterns detected.'
+    let status: Status = sourceSeen ? 'pass' : 'na'
+    let finding = sourceSeen
+      ? 'No `origin: *` CORS patterns in source files.'
+      : 'Source not scanned — N/A (runtime CORS shown in Runtime checks above).'
     if (c && c.total > 0) {
       status = 'warn'
       finding = `${c.total} file${c.total === 1 ? '' : 's'} with permissive CORS (\`origin: *\` or \`origin: true\`).`
@@ -328,8 +373,10 @@ function evaluate(vc: VibeConcerns | null | undefined): CardData[] {
   // is the most common trigger.
   {
     const m = vc?.mobile_input_zoom
-    let status: Status = 'pass'
-    let finding = 'Inputs/textareas use ≥16px font (no iOS zoom-on-focus).'
+    let status: Status = sourceSeen ? 'pass' : 'na'
+    let finding = sourceSeen
+      ? 'Inputs/textareas use ≥16px font (no iOS zoom-on-focus).'
+      : 'Source not scanned — N/A.'
     if (m && m.total > 0) {
       status = 'warn'
       finding = `${m.total} input/textarea${m.total === 1 ? '' : 's'} with sub-16px font — iOS Safari will pinch-zoom on focus.`
