@@ -5,7 +5,7 @@ import type { Project } from '../lib/supabase'
 import { supabase } from '../lib/supabase'
 import { projectSlug, projectShareUrl } from '../lib/projectSlug'
 import {
-  displayScore, laneOf, viewerCanSeeDigit,
+  displayScore, laneOf, viewerCanSeeDigit, urlLanePolish,
   scoreBand    as laneScoreBand,
   bandLabel    as laneBandLabel,
   bandTone     as laneBandTone,
@@ -615,6 +615,18 @@ export function ProjectDetailPage() {
   const roundDelta = latestSnap?.score_total_delta ?? null
   const roundCount = timeline.length
 
+  // 2026-05-23 · CEO 피드백 · "환산점수(73)로 통일해서 보여줘야 한다".
+  // URL fast lane stores score_auto (~24) which normalizes to 73 via
+  // urlLanePolish, but project.score_total is the platform /50 mapping
+  // (48). Every UI surface that shows a /100 number to the user must
+  // read displayedScore, not project.score_total, or the page reads
+  // 73 up top and 48 below. ScanStrip already lane-aware (line ~1190)
+  // — the rest (share menu band · AnalysisResultCard headline ·
+  // OwnerUtilities · ShareToXModal · ScoreTimeline last point) get
+  // threaded the lane-normalized number too.
+  const currentLane   = laneOf(project)
+  const displayedScore = displayScore(project)
+
   return (
     <section className="relative z-10 pt-20 pb-16 px-4 md:px-6 lg:px-8 min-h-screen">
       <div className="max-w-5xl mx-auto">
@@ -984,7 +996,10 @@ export function ProjectDetailPage() {
                     the menu mirrors prestige (graduation first, then
                     milestones desc by recency, then audit). */}
                 {isOwner && (() => {
-                  const score = project.score_total ?? 0
+                  // §15-E lane-normalized · URL fast lane shows /33 polish,
+                  // not raw score_total · share card and band must match
+                  // what the user sees on the page (CEO 피드백 2026-05-23).
+                  const score = displayedScore
                   const band  = score >= 80 ? 'strong' : score >= 60 ? 'mid' : 'early'
                   const ghMatch = (project.github_url ?? '').match(/github\.com\/([^/]+)\/([^/?#]+)/i)
                   const owner       = ghMatch?.[1] ?? 'owner'
@@ -1272,7 +1287,7 @@ export function ProjectDetailPage() {
           <OwnerNextStepBanner
             projectName={project.project_name}
             githubUrl={project.github_url}
-            scoreTotal={project.score_total ?? null}
+            scoreTotal={displayedScore}
             scoreAuto={project.score_auto ?? null}
             scoreForecast={project.score_forecast ?? null}
             scoreCommunity={project.score_community ?? null}
@@ -1381,13 +1396,29 @@ export function ProjectDetailPage() {
                 showAsBand={showAsBand}
                 points={(() => {
                   if (timeline.length === 0) return timeline
-                  const last = timeline[timeline.length - 1]
-                  if (last.score_total === project.score_total) return timeline
-                  const prevSnap = timeline.length >= 2 ? timeline[timeline.length - 2] : null
-                  const liveDelta = prevSnap ? project.score_total - prevSnap.score_total : last.score_total_delta
+                  // For URL fast lane the snapshots store score_total in
+                  // the /50 platform mapping (e.g. 48). The page hero
+                  // displays the /33 lane polish (e.g. 73). Re-map every
+                  // timeline point through urlLanePolish so the chart
+                  // reads the same number as the hero. CEO 피드백
+                  // 2026-05-23 · 환산점수 통일.
+                  const laneAdjusted = currentLane === 'url_fast_lane'
+                    ? timeline.map(p => {
+                        // Reverse the platform /50 mapping to recover the
+                        // raw score_auto · urlLanePolish then renormalizes
+                        // to /33. score_total = round(score_auto/50*100) →
+                        // score_auto ≈ score_total*50/100 = score_total/2.
+                        const recoveredAuto = Math.round((p.score_total ?? 0) / 2)
+                        return { ...p, score_total: urlLanePolish(recoveredAuto) }
+                      })
+                    : timeline
+                  const last = laneAdjusted[laneAdjusted.length - 1]
+                  if (last.score_total === displayedScore) return laneAdjusted
+                  const prevSnap = laneAdjusted.length >= 2 ? laneAdjusted[laneAdjusted.length - 2] : null
+                  const liveDelta = prevSnap ? displayedScore - prevSnap.score_total : last.score_total_delta
                   return [
-                    ...timeline.slice(0, -1),
-                    { ...last, score_total: project.score_total, score_total_delta: liveDelta },
+                    ...laneAdjusted.slice(0, -1),
+                    { ...last, score_total: displayedScore, score_total_delta: liveDelta },
                   ]
                 })()}
               />
@@ -1395,8 +1426,14 @@ export function ProjectDetailPage() {
 
             {/* AI Coder 7 Frames · signature framework — sits between
                 score timeline and full Analysis card so beginners see the
-                most actionable failure-mode summary first. */}
-            {vibeConcerns && (
+                most actionable failure-mode summary first.
+                2026-05-23 · CEO 피드백 cross-check · URL fast lane never
+                sees source code, so every source-pattern frame (CORS
+                permissive · observability libs · webhook idempotency ·
+                hardcoded URLs etc.) defaults to PASS/FAIL on empty
+                evidence — misleading. Gate the panel to lanes that
+                actually scanned the repo. */}
+            {vibeConcerns && currentLane !== 'url_fast_lane' && (
               <div className="mb-8">
                 <VibeConcernsPanel vibeConcerns={vibeConcerns} />
               </div>
@@ -1461,7 +1498,7 @@ export function ProjectDetailPage() {
                 // on the same page, which we just had to debug. axis_scores +
                 // strengths + concerns stay snapshot-frozen (those ARE point-
                 // in-time audit outputs).
-                result={{ ...snapshotResult, score_total: project.score_total }}
+                result={{ ...snapshotResult, score_total: displayedScore }}
                 projectId={isOwner ? project.id : undefined}
                 onReanalyzed={isOwner ? async (next) => {
                   // 1) Latest analysis snapshot — drives the bottom card.
@@ -1629,7 +1666,7 @@ export function ProjectDetailPage() {
                 projectName={project.project_name}
                 projectSlug={project.slug}
                 githubUrl={project.github_url}
-                projectScore={project.score_total}
+                projectScore={displayedScore}
               />
             </CollapsibleSection>
           )}
@@ -1788,7 +1825,7 @@ export function ProjectDetailPage() {
         open={!!shareJump}
         onClose={() => setShareJump(null)}
         projectName={project.project_name ?? 'this build'}
-        score={shareJump?.score ?? project.score_total}
+        score={shareJump?.score ?? displayedScore}
         delta={shareJump?.delta ?? 0}
         url={typeof window !== 'undefined' ? `${window.location.origin}/projects/${project.id}` : `/projects/${project.id}`}
         takeaway={shareJump?.takeaway ?? null}
