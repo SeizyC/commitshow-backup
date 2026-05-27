@@ -12,6 +12,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
+import { loadPretendard } from '../lib/loadPretendard'
 
 // ── Shared card chrome ─────────────────────────────────────────────────────
 const cardWidth = 1200
@@ -175,6 +176,9 @@ type DraftRow = {
 export function CmoPreviewPage() {
   const { user, member, loading } = useAuth()
   const navigate = useNavigate()
+
+  // Pretendard CSS is lazy on admin routes (see src/lib/loadPretendard.ts).
+  useEffect(() => { loadPretendard() }, [])
 
   const [workspace,    setWorkspace]    = useState<WorkspaceRow | null>(null)
   const [templates,    setTemplates]    = useState<TemplateRow[]>([])

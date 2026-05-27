@@ -15,6 +15,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
+import { loadPretendard } from '../lib/loadPretendard'
 
 interface Template {
   kind:        string
@@ -330,6 +331,8 @@ export function EmailTemplatesPanel() {
 // URL access still works for admins.
 export function AdminEmailsPage() {
   const { user, member, loading: authLoading } = useAuth()
+  // Pretendard CSS is lazy on admin routes (see src/lib/loadPretendard.ts).
+  useEffect(() => { loadPretendard() }, [])
   if (authLoading) {
     return <div className="pt-32 pb-20 px-6 text-center font-mono text-xs" style={{ color: 'var(--text-muted)' }}>checking session…</div>
   }

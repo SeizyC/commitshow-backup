@@ -14,31 +14,20 @@ const HEADLINE_LINE_1 = 'Vibecoded'
 const HEADLINE_LINE_2 = 'Time to audit'
 const TOTAL_HEADLINE_CHARS = HEADLINE_LINE_1.length + HEADLINE_LINE_2.length
 
+// 2026-05-26 perf · headline was previously typed in over ~1.9s of JS
+// setTimeout chains (initial state count=0 → typed character by character).
+// Combined with the stagger-2 700ms fadeUp the h1 sat invisible/empty for
+// ~2.5s, which is exactly the window LCP measures — the LCP candidate
+// couldn't pick the h1 until it was both opaque AND non-empty, pushing
+// mobile LCP to 7.4s. We now render the final text immediately so LCP
+// fires at first paint. Brand "terminal" cue is preserved via the
+// blinking cursor + gold shimmer on line 2.
 function useTypedHeadline() {
-  const [count, setCount] = useState(0)
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' &&
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setCount(TOTAL_HEADLINE_CHARS)
-      return
-    }
-    if (count >= TOTAL_HEADLINE_CHARS) return
-    // Initial pause lets the stagger-2 fadeUp finish · longer pause at the
-    // line break makes the carriage return feel deliberate · per-char ~95ms
-    // matches a realistic terminal-typing cadence.
-    const delay =
-      count === 0                          ? 650 :
-      count === HEADLINE_LINE_1.length     ? 380 :
-      95
-    const t = setTimeout(() => setCount(c => c + 1), delay)
-    return () => clearTimeout(t)
-  }, [count])
-
-  const line1 = HEADLINE_LINE_1.slice(0, Math.min(count, HEADLINE_LINE_1.length))
-  const line2 = HEADLINE_LINE_2.slice(0, Math.max(0, count - HEADLINE_LINE_1.length))
-  const onLine2 = count > HEADLINE_LINE_1.length
-  return { line1, line2, onLine2 }
+  return {
+    line1:   HEADLINE_LINE_1,
+    line2:   HEADLINE_LINE_2,
+    onLine2: true,
+  }
 }
 
 interface HeroProps {
@@ -134,8 +123,16 @@ export function Hero(_props: HeroProps) {
         <span className="hero-orb hero-orb-indigo" />
       </div>
 
-      {/* ── Two-column shell · stacked on mobile/md, side-by-side on lg+ ── */}
-      <div className="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-10 items-center">
+      {/* ── Two-column shell · stacked on mobile/md, side-by-side on lg+ ──
+          2026-05-26 perf · min-height locks the row so font-display:swap
+          (Playfair Display loads from Google Fonts → first paint uses
+          serif fallback with different metrics → h1 height changes when
+          Playfair arrives) cannot expand the grid and shove every
+          downstream section. Without this lock, desktop CLS = 0.116
+          (poor). The lock heights are sized to the natural h1+CTA
+          column height at the largest clamp() value so the swap is a
+          metric change inside a fixed-height box, not a flow shift. */}
+      <div className="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-10 items-center min-h-[560px] lg:min-h-[640px]">
 
         {/* ── LEFT · badge + headline + sub + CTAs ── */}
         <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
@@ -360,7 +357,13 @@ function TypedH1() {
 
   return (
     <h1
-      className="stagger-2 font-display font-black leading-none mb-6"
+      // 2026-05-26 perf · stagger-2 (fadeUp opacity:0 → 1 + translateY)
+      // was dropped from the LCP element. The 700ms 0.2s-delayed fade-in
+      // meant the h1 sat at opacity:0 for the first ~900ms — invisible to
+      // the LCP detector, which then waited for a later paint and pushed
+      // mobile LCP to 7.4s. The rest of the hero column keeps its
+      // staggered intro; only the LCP candidate paints immediately.
+      className="font-display font-black leading-none mb-6"
       // Tightening dropped 2026-05-14 · 'Time to audit' is 13 chars vs the old
       // 'Commit' (6 chars), and the -1.5px / tracking-tight pair was making the
       // serif glyphs collide. CLAUDE.md §4 prefers no letter-spacing override

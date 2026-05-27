@@ -11,6 +11,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { invalidateLadderCache } from '../lib/ladder'
 import { urlLanePolish } from '../lib/laneScore'
+import { loadPretendard } from '../lib/loadPretendard'
 import { EmailTemplatesPanel } from './AdminEmailsPage'
 
 const ADMIN_TOKEN_KEY = 'commitshow.admin.token'
@@ -129,6 +130,11 @@ const STATUS_COLORS: Record<string, string> = {
 export function AdminPage() {
   const { user, member, loading } = useAuth()
   const navigate = useNavigate()
+
+  // .admin-shell uses Pretendard — inject the CSS now that this admin route
+  // is actually being mounted. Top-level <link> was removed from index.html
+  // to recover ~1.1s of public-page LCP.
+  useEffect(() => { loadPretendard() }, [])
 
   const [token, setToken] = useState<string>(() => localStorage.getItem(ADMIN_TOKEN_KEY) ?? '')
   const [tokenInput, setTokenInput] = useState('')
