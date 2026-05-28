@@ -212,6 +212,14 @@ interface HeroUrlHookProps {
   placeholder?: string
   helperText?:  React.ReactNode
   inputId?:     string
+  /**
+   * Optional node rendered ABOVE the form in the idle phase only. Used
+   * by CheckPage to attach the Site URL ↔ GitHub repo segmented toggle
+   * directly above the input so it disappears together with the form
+   * once analysis starts — otherwise the toggle would dangle above the
+   * progress list with no input to act on.
+   */
+  prependBeforeForm?: React.ReactNode
 }
 
 export function HeroUrlHook({
@@ -219,6 +227,7 @@ export function HeroUrlHook({
   placeholder = 'https://yoursite.com',
   helperText,
   inputId,
+  prependBeforeForm,
 }: HeroUrlHookProps = {}) {
   const [url,    setUrl]    = useState('')
   const [phase,  setPhase]  = useState<Phase>('idle')
@@ -549,6 +558,10 @@ export function HeroUrlHook({
               public ladder.
             </p>
           </>
+        )}
+
+        {phase === 'idle' && prependBeforeForm && (
+          <div className="mb-3">{prependBeforeForm}</div>
         )}
 
         {phase === 'idle' && (

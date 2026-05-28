@@ -113,73 +113,65 @@ export function CheckPage() {
         </div>
       </section>
 
-      {/* ── Mode toggle · Site URL ↔ GitHub repo.
-          Segmented control sitting right above the audit input so the
-          user picks their lane explicitly. Backend (audit-site-preview)
-          auto-detects regardless of which segment is active — the
-          toggle is a mental-model affordance and a placeholder/helper
-          driver. Replaces the previous secondary CTA ("BUILT AN APP …
-          PASTE THE GITHUB REPO ABOVE →") which user feedback 2026-05-28
-          flagged as still implying a redirect. */}
-      <section className="relative z-10 px-6 md:px-10 lg:px-16 mt-4">
-        <div className="max-w-3xl mx-auto">
-          <div
-            role="tablist"
-            aria-label="Audit input mode"
-            className="inline-flex font-mono text-xs tracking-widest"
-            style={{
-              border: '1px solid rgba(240,192,64,0.25)',
-              borderRadius: '2px',
-              background: 'rgba(6,12,26,0.4)',
-            }}
-          >
-            {(['site', 'repo'] as const).map((m) => {
-              const active = mode === m
-              const label = m === 'site' ? 'SITE URL' : 'GITHUB REPO'
-              return (
-                <button
-                  key={m}
-                  role="tab"
-                  type="button"
-                  aria-selected={active}
-                  onClick={() => switchMode(m)}
-                  className="px-4 py-2 transition-all"
-                  style={{
-                    background: active ? 'var(--gold-500)' : 'transparent',
-                    color: active ? 'var(--navy-900)' : 'var(--text-secondary)',
-                    border: 'none',
-                    cursor: active ? 'default' : 'pointer',
-                    fontWeight: active ? 600 : 400,
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!active) e.currentTarget.style.color = 'var(--cream)'
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!active) e.currentTarget.style.color = 'var(--text-secondary)'
-                  }}
-                >
-                  {label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
       {/* ── Audit entry · chromeless HeroUrlHook = form + state machine +
           result card from the landing page, with its own section bg/
           eyebrow/h2/sub copy suppressed. Sole audit surface on the LP.
-          Placeholder + helper driven by the mode toggle above so the
-          user's lane choice is reflected in the input + meta line.
-          audit-site-preview auto-forwards github URLs to the anonymous
-          walk-on path regardless, so no signup is required to see a
-          result either way. */}
+          The Site URL ↔ GitHub repo segmented toggle rides in the
+          `prependBeforeForm` slot so it sits directly above the input
+          AND disappears together with the form once analysis starts —
+          previously the toggle dangled above the running progress list
+          with no input attached. Backend (audit-site-preview) auto-
+          detects + forwards github URLs to the anonymous walk-on path
+          regardless of which segment is active; the toggle is a
+          mental-model affordance and the placeholder/helper driver. */}
       <div className="mb-12">
         <HeroUrlHook
           chromeless
           inputId={URL_INPUT_ID}
           placeholder={MODE_COPY[mode].placeholder}
           helperText={MODE_COPY[mode].helper}
+          prependBeforeForm={
+            <div
+              role="tablist"
+              aria-label="Audit input mode"
+              className="inline-flex font-mono text-xs tracking-widest"
+              style={{
+                border: '1px solid rgba(240,192,64,0.25)',
+                borderRadius: '2px',
+                background: 'rgba(6,12,26,0.4)',
+              }}
+            >
+              {(['site', 'repo'] as const).map((m) => {
+                const active = mode === m
+                const label = m === 'site' ? 'SITE URL' : 'GITHUB REPO'
+                return (
+                  <button
+                    key={m}
+                    role="tab"
+                    type="button"
+                    aria-selected={active}
+                    onClick={() => switchMode(m)}
+                    className="px-4 py-2 transition-all"
+                    style={{
+                      background: active ? 'var(--gold-500)' : 'transparent',
+                      color: active ? 'var(--navy-900)' : 'var(--text-secondary)',
+                      border: 'none',
+                      cursor: active ? 'default' : 'pointer',
+                      fontWeight: active ? 600 : 400,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!active) e.currentTarget.style.color = 'var(--cream)'
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!active) e.currentTarget.style.color = 'var(--text-secondary)'
+                    }}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+          }
         />
       </div>
 
