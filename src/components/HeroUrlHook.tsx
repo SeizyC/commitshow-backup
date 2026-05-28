@@ -1738,6 +1738,16 @@ function ResultCard({ result, onAudition, onTryAnother, onRerun }: ResultCardPro
       {(() => {
         const isBrag = polishScore >= 75
         const pointsToStrong = Math.max(0, 75 - polishScore)
+        // Coach hook · refactor 2026-05-28.
+        // Previous sub-text was a generic promise ("see the fixes, track
+        // the climb"). User feedback: ad audience can't verify the value
+        // from a promise — show the SHAPE of what's gated instead. We
+        // surface the concrete number of unseen concerns (concernsRaw
+        // total minus the 2 already visible above this box), then sell
+        // "+ fix recipes for each" as the carrot.
+        const totalConcerns   = concernsRaw.length
+        const visibleConcerns = concerns.length     // capped at 2 above
+        const hiddenConcerns  = Math.max(0, totalConcerns - visibleConcerns)
         return (
           <div className="mb-3 px-4 py-3"
                style={{
@@ -1747,12 +1757,19 @@ function ResultCard({ result, onAudition, onTryAnother, onRerun }: ResultCardPro
                }}>
             <div className="font-mono text-[10px] tracking-widest mb-1"
                  style={{ color: isBrag ? 'var(--gold-500)' : 'var(--scarlet)' }}>
-              {isBrag ? '★ TOP-TIER POLISH' : `△ ${pointsToStrong} POINT${pointsToStrong === 1 ? '' : 'S'} FROM STRONG BAND`}
+              {isBrag
+                ? '★ TOP-TIER POLISH'
+                : hiddenConcerns > 0
+                  ? `△ ${hiddenConcerns} MORE CONCERN${hiddenConcerns === 1 ? '' : 'S'} + FIX RECIPE${totalConcerns === 1 ? '' : 'S'}`
+                  : '△ FIX RECIPES READY'}
             </div>
             <p className="text-sm leading-snug" style={{ color: 'var(--cream)' }}>
               {isBrag
                 ? 'You ship cleaner than most. Pin this audit to your profile and share the card with one click.'
-                : 'Sign in to see the step-by-step fixes and re-audit after each change — track the score climb.'}
+                : hiddenConcerns > 0
+                  ? <>Sign in to see the other {hiddenConcerns} concern{hiddenConcerns === 1 ? '' : 's'} and a step-by-step fix for each one. {pointsToStrong > 0 && <span style={{ color: 'var(--text-secondary)' }}>· {pointsToStrong} pts from Strong band.</span>}</>
+                  : <>Sign in to see a step-by-step fix for each concern above. {pointsToStrong > 0 && <span style={{ color: 'var(--text-secondary)' }}>· {pointsToStrong} pts from Strong band.</span>}</>
+              }
             </p>
           </div>
         )
