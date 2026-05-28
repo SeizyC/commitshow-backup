@@ -339,20 +339,33 @@ function RadialAuditVisual() {
         )
       })()}
 
-      {/* Speech bubble · cream pill hovering just above the mascot's
-          head with a short tail tipping into it (2026-05-29 v2 — moved
-          down from the top dead zone per CEO; ring overlap is fine).
-          Text wrapped in a JSX expression so the apostrophe in "I'll"
-          stays clean past react/no-unescaped-entities. */}
+      {/* Speech bubble · navy pill with cream text, gold hairline border
+          (2026-05-29 v3 — earlier cream fill was too white against our
+          dark page bg). Sits just above the mascot's head, tail dips
+          into the crown. Same card-navy pattern as the rest of the
+          site so the bubble reads as part of the brand surface, not a
+          comic-strip overlay. */}
       <rect
         x={cx - 175} y={100}
         width={350} height={48}
         rx={8}
-        fill="var(--cream)"
+        fill="var(--navy-800)"
+        stroke="rgba(240,192,64,0.35)"
+        strokeWidth={1}
       />
       <polygon
         points={`${cx - 10},148 ${cx + 10},148 ${cx},168`}
-        fill="var(--cream)"
+        fill="var(--navy-800)"
+        stroke="rgba(240,192,64,0.35)"
+        strokeWidth={1}
+      />
+      {/* Hide the seam where the tail meets the rect — short horizontal
+          cover-strip in the same navy-800 fill, no stroke, sitting on
+          top of both shapes' bottom borders along the tail's mouth. */}
+      <rect
+        x={cx - 9} y={147.5}
+        width={18} height={2}
+        fill="var(--navy-800)"
       />
       <text
         x={cx} y={124}
@@ -361,7 +374,7 @@ function RadialAuditVisual() {
         fontFamily="DM Mono, monospace"
         fontSize={15}
         fontWeight={500}
-        fill="var(--navy-950)"
+        fill="var(--cream)"
       >
         {"I'll go through it carefully!"}
       </text>
