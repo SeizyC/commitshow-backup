@@ -20,7 +20,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { HeroUrlHook } from '../components/HeroUrlHook'
-import { HeroTerminal } from '../components/HeroTerminal'
 
 // Stable id assigned to the audit input so the mode toggle above can
 // focus it after a switch (keyboard users + iOS keyboard popup feel).
@@ -194,22 +193,18 @@ export function CheckPage() {
         />
       </div>
 
-      {/* ── Live terminal visual · 2026-05-29 · replaces the earlier
-          SampleReportCard mockup. Reuses the LandingPage's HeroTerminal
-          (14-stage state machine · ANSI Shadow figlet score · 12s
-          auto-cycle through real recent audits) so the dead zone below
-          the form fills with the actual product output, not another
-          UI box. Same pattern as a SaaS LP "product screenshot" hero —
-          but ours is animated and live. Hidden once the user kicks
-          off their own analysis so the real progress trail owns the
-          visual lead. */}
+      {/* ── Ad-LP visual hero · 2026-05-29 · custom-drawn radial gauge
+          (RadialAuditVisual below). Replaces the previous attempts
+          (static SampleReportCard, then the LandingPage's HeroTerminal)
+          — both read as "yet another UI box" per user feedback. This
+          one is an actual illustration: 14 segments around the perimeter
+          (~10 lit, ~4 muted, alluding to a Strong-band audit), brand
+          mark in the center, no faked numbers. Single visual statement,
+          ad-LP hero pattern. Hidden during analysis. */}
       {hookPhase === 'idle' && (
-        <section className="relative z-10 px-6 md:px-10 lg:px-16 mt-2 mb-12">
-          <div className="max-w-3xl">
-            <div className="font-mono text-[10px] tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>
-              // SAMPLE OUTPUT · CYCLING THROUGH RECENT AUDITS
-            </div>
-            <HeroTerminal />
+        <section className="relative z-10 px-6 md:px-10 lg:px-16 mt-2 mb-16">
+          <div className="max-w-3xl mx-auto">
+            <RadialAuditVisual />
           </div>
         </section>
       )}
@@ -230,6 +225,148 @@ export function CheckPage() {
         </div>
       </footer>
     </main>
+  )
+}
+
+/**
+ * RadialAuditVisual — custom illustration for the ad-LP fold.
+ *
+ * Brief: a radial gauge that visualizes the engine's "14 production-
+ * readiness frames" in one image. 14 wedge segments around the
+ * perimeter — most lit gold (passing), a few muted (concerns to fix)
+ * — with the runtime ("60s") sitting in the center as the brand
+ * promise. Four axis labels (Lighthouse · Routes · Security · Tests)
+ * float outside the ring as concrete-but-illustrative anchors so a
+ * visitor reads it as "this thing measures real engineering signals"
+ * rather than an abstract dial.
+ *
+ * Why this and not a reused component:
+ *   · earlier mockup boxes and the cycling HeroTerminal both read as
+ *     "yet another UI surface" — user wanted a real illustration
+ *   · inline SVG keeps the brand tokens (navy + gold + cream),
+ *     scales responsively, no extra HTTP request
+ *   · no faked sample numbers, so it never reads as a partial audit
+ */
+function RadialAuditVisual() {
+  const cx = 400
+  const cy = 360
+  const outerR = 230
+  const innerR = 178
+  const segmentCount = 14
+  // Pattern: 10 lit, 4 muted. Indices mixed (not contiguous) so it reads
+  // as "audit result" rather than "progress bar 70%".
+  const litSet = new Set([0, 1, 2, 4, 5, 7, 8, 9, 11, 12])
+
+  // Half-angle gap between adjacent wedges (radians) — small visual
+  // breather between segments without losing the ring read.
+  const gap = 0.022
+
+  const segments = Array.from({ length: segmentCount }, (_, i) => {
+    const step = (Math.PI * 2) / segmentCount
+    const start = -Math.PI / 2 + i * step + gap
+    const end   = -Math.PI / 2 + (i + 1) * step - gap
+    const x1 = cx + Math.cos(start) * outerR
+    const y1 = cy + Math.sin(start) * outerR
+    const x2 = cx + Math.cos(end)   * outerR
+    const y2 = cy + Math.sin(end)   * outerR
+    const x3 = cx + Math.cos(end)   * innerR
+    const y3 = cy + Math.sin(end)   * innerR
+    const x4 = cx + Math.cos(start) * innerR
+    const y4 = cy + Math.sin(start) * innerR
+    const d = `M ${x1} ${y1} A ${outerR} ${outerR} 0 0 1 ${x2} ${y2} L ${x3} ${y3} A ${innerR} ${innerR} 0 0 0 ${x4} ${y4} Z`
+    return { d, lit: litSet.has(i) }
+  })
+
+  // Axis labels float just outside the ring at cardinal-ish angles.
+  // Sample labels — illustrative not exhaustive (the engine measures
+  // ~14 frames, four shown for context).
+  const labelOffsetR = outerR + 38
+  const labels: Array<{ text: string; angleDeg: number; anchor: 'start' | 'middle' | 'end' }> = [
+    { text: 'LIGHTHOUSE', angleDeg: -90, anchor: 'middle' },
+    { text: 'ROUTES',     angleDeg:   0, anchor: 'start'  },
+    { text: 'SECURITY',   angleDeg:  90, anchor: 'middle' },
+    { text: 'TESTS · CI', angleDeg: 180, anchor: 'end'    },
+  ]
+
+  return (
+    <svg
+      viewBox="0 0 800 720"
+      width="100%"
+      role="img"
+      aria-label="Radial gauge illustration: 14 production-readiness frames audited"
+      style={{ display: 'block', maxWidth: 640, margin: '0 auto' }}
+    >
+      {/* outer guide ring · whisper-faint */}
+      <circle cx={cx} cy={cy} r={outerR + 22} fill="none" stroke="rgba(240,192,64,0.06)" strokeWidth={1} />
+
+      {/* 14 wedge segments */}
+      {segments.map((s, i) => (
+        <path
+          key={i}
+          d={s.d}
+          fill={s.lit ? 'var(--gold-500)' : 'rgba(248,245,238,0.10)'}
+          opacity={s.lit ? 0.92 : 1}
+        />
+      ))}
+
+      {/* inner subtle disc · pulls the center text out of the wedge ring */}
+      <circle cx={cx} cy={cy} r={innerR - 12} fill="rgba(6,12,26,0.6)" stroke="rgba(240,192,64,0.10)" strokeWidth={1} />
+
+      {/* center label · runtime promise. "60s" big in Playfair · "AUDIT"
+          small under it in DM Mono · short and abstract enough that it
+          doesn't read as a fake sample score. */}
+      <text
+        x={cx} y={cy + 6} textAnchor="middle"
+        fontFamily="Playfair Display, Georgia, serif"
+        fontWeight={900}
+        fontSize={108}
+        fill="var(--cream)"
+        letterSpacing="-2"
+      >
+        60s
+      </text>
+      <text
+        x={cx} y={cy + 44} textAnchor="middle"
+        fontFamily="DM Mono, monospace"
+        fontSize={12}
+        fill="var(--gold-500)"
+        letterSpacing="6"
+      >
+        AUDIT
+      </text>
+
+      {/* axis labels around the ring */}
+      {labels.map(({ text, angleDeg, anchor }, i) => {
+        const angle = (angleDeg * Math.PI) / 180
+        const x = cx + Math.cos(angle) * labelOffsetR
+        const y = cy + Math.sin(angle) * labelOffsetR
+        return (
+          <text
+            key={i}
+            x={x} y={y}
+            textAnchor={anchor}
+            dominantBaseline="middle"
+            fontFamily="DM Mono, monospace"
+            fontSize={11}
+            fill="rgba(248,245,238,0.42)"
+            letterSpacing="3"
+          >
+            {text}
+          </text>
+        )
+      })}
+
+      {/* bottom caption · ties the abstract gauge back to plain language */}
+      <text
+        x={cx} y={650} textAnchor="middle"
+        fontFamily="DM Mono, monospace"
+        fontSize={11}
+        fill="rgba(248,245,238,0.55)"
+        letterSpacing="3"
+      >
+        14 PRODUCTION-READINESS FRAMES · PROBED IN ONE PASS
+      </text>
+    </svg>
   )
 }
 
