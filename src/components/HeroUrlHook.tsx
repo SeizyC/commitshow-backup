@@ -595,7 +595,7 @@ export function HeroUrlHook({
             <h2 className="font-display font-black text-3xl sm:text-4xl md:text-5xl mb-3 leading-tight" style={{ color: 'var(--cream)' }}>
               Paste a URL<br />See what's broken
             </h2>
-            <p className="font-light max-w-2xl mb-8" style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', lineHeight: 1.55 }}>
+            <p className="font-light max-w-2xl" style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '3.25rem' }}>
               Drop your URL — we'll surface what's wrong with your project in under a minute.
               Like what you see? Audition the project for a sharper audit and a spot on the
               public ladder.
