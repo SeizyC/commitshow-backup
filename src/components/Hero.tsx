@@ -11,7 +11,7 @@ import { fetchMemberStageBuckets, type MemberStageBuckets } from '../lib/project
 // on line 2 stays — line 1 is plain cream so the shimmer lands on the verb
 // that names what we do for them.
 const HEADLINE_LINE_1 = 'Vibecoded'
-const HEADLINE_LINE_2 = 'Time to audit'
+const HEADLINE_LINE_2 = 'Time to ship'
 const TOTAL_HEADLINE_CHARS = HEADLINE_LINE_1.length + HEADLINE_LINE_2.length
 
 // 2026-05-26 perf · headline was previously typed in over ~1.9s of JS
@@ -364,7 +364,7 @@ function TypedH1() {
       // mobile LCP to 7.4s. The rest of the hero column keeps its
       // staggered intro; only the LCP candidate paints immediately.
       className="font-display font-black leading-none mb-6"
-      // Tightening dropped 2026-05-14 · 'Time to audit' is 13 chars vs the old
+      // Tightening dropped 2026-05-14 · 'Time to ship' (was 'Time to audit') is ~12 chars vs the old
       // 'Commit' (6 chars), and the -1.5px / tracking-tight pair was making the
       // serif glyphs collide. CLAUDE.md §4 prefers no letter-spacing override
       // outside the 3.5–8rem 'Hero 초대형' range — our clamp lands at 3rem on
