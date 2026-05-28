@@ -220,6 +220,17 @@ interface HeroUrlHookProps {
    * progress list with no input to act on.
    */
   prependBeforeForm?: React.ReactNode
+
+  /**
+   * Optional post-signin handler. Receives the freshly audited project's
+   * id so the host page can drop the new member straight into backstage
+   * on THEIR audit, not the generic /submit funnel. CheckPage uses this
+   * to navigate to /projects/<id> so the score the user just saw is the
+   * first thing they land on after signing up. Default (LandingPage and
+   * any other host that doesn't pass it) keeps the /submit destination
+   * for the "I'm here to register a project" intent path.
+   */
+  onPostSignIn?: (projectId: string | null) => void
 }
 
 export function HeroUrlHook({
@@ -228,6 +239,7 @@ export function HeroUrlHook({
   helperText,
   inputId,
   prependBeforeForm,
+  onPostSignIn,
 }: HeroUrlHookProps = {}) {
   const [url,    setUrl]    = useState('')
   const [phase,  setPhase]  = useState<Phase>('idle')
@@ -247,6 +259,19 @@ export function HeroUrlHook({
   // members get 50/IP/day and have ticket-gated /submit as a separate
   // channel, so the CTA is noise for them).
   const [isAnon, setIsAnon] = useState(true)
+
+  // Where to land users right after they sign in from this component.
+  // Host pages can override via onPostSignIn (CheckPage routes to
+  // /projects/<id> so the score they just saw is the first thing they
+  // see in backstage). Default sends them to /submit for LandingPage's
+  // "I came here to register" intent path.
+  const routeAfterSignIn = (projectId: string | null) => {
+    if (onPostSignIn) {
+      onPostSignIn(projectId)
+      return
+    }
+    navigate('/submit')
+  }
   useEffect(() => {
     let alive = true
     supabase.auth.getUser().then(({ data }) => {
@@ -748,14 +773,14 @@ export function HeroUrlHook({
           <ResultCard
             result={result}
             onAudition={async () => {
-              // §15-E policy A · URL audit ≠ owned audit · we never claim.
-              // CTA funnels users into the FULL lane with their own repo
-              // instead. Signed-in users go straight to /submit; anonymous
-              // users see the auth modal first, then the auth modal's own
-              // post-signup redirect lands them somewhere useful.
+              // Brag (>=75) or Coach (<75) — both funnels terminate at
+              // backstage on the user's just-audited project. Signed-in
+              // users go straight there. Anonymous users see auth modal
+              // first; the modal's onClose then runs the same routing
+              // (see AuthModal handler below).
               const { data: { user } } = await supabase.auth.getUser()
               if (user) {
-                navigate('/submit')
+                routeAfterSignIn(result?.project_id ?? null)
               } else {
                 setAuthOpen(true)
               }
@@ -770,11 +795,12 @@ export function HeroUrlHook({
         open={authOpen}
         onClose={async () => {
           setAuthOpen(false)
-          // If signup just completed (Supabase session live), funnel
-          // straight into /submit so the user lands on the FULL lane
-          // entry · removes the "I signed up, now what?" gap.
+          // If signup just completed, drop the new member onto the
+          // backstage view of THEIR just-audited project (CheckPage
+          // passes onPostSignIn) — otherwise legacy /submit destination
+          // for hosts that didn't opt in (LandingPage register intent).
           const { data: { user } } = await supabase.auth.getUser()
-          if (user) navigate('/submit')
+          if (user) routeAfterSignIn(result?.project_id ?? null)
         }}
         initialMode="signup"
       />
@@ -1698,11 +1724,40 @@ function ResultCard({ result, onAudition, onTryAnother, onRerun }: ResultCardPro
         deepProbe={deepProbe}
       />
 
-      {/* Action row · mobile stacks full-width · sm+ rows side-by-side with
-          consistent button widths. Primary gold · secondaries outline ·
-          uniform 44px height (mobile tap target standard). Primary CTA
-          drives the user into the FULL lane (/submit) — not a "claim"
-          flow, since URL audits have no ownership verification. */}
+      {/* Primary CTA · score-aware branching (2026-05-28).
+          ≥ 75 Strong+ → BRAG funnel · ownership ("claim") + viral share
+                          carrot · drives sign-in so the audit gets pinned
+                          to the user's profile + a share card is issued.
+          <  75         → COACH funnel · concerns are visible above this
+                          row · primary CTA promises the step-by-step
+                          fix list (backstage coach panel) after sign-in.
+          Both routes terminate at backstage — same destination, different
+          emotional hooks. Audition CTA (Repo lane upgrade) is dropped
+          from the result card; it was the wrong ask for ad audience who
+          just got a number and wants the next concrete step. */}
+      {(() => {
+        const isBrag = polishScore >= 75
+        const pointsToStrong = Math.max(0, 75 - polishScore)
+        return (
+          <div className="mb-3 px-4 py-3"
+               style={{
+                 background: isBrag ? 'rgba(240,192,64,0.06)' : 'rgba(200,16,46,0.05)',
+                 border: `1px solid ${isBrag ? 'rgba(240,192,64,0.22)' : 'rgba(200,16,46,0.22)'}`,
+                 borderRadius: '2px',
+               }}>
+            <div className="font-mono text-[10px] tracking-widest mb-1"
+                 style={{ color: isBrag ? 'var(--gold-500)' : 'var(--scarlet)' }}>
+              {isBrag ? '★ TOP-TIER POLISH' : `△ ${pointsToStrong} POINT${pointsToStrong === 1 ? '' : 'S'} FROM STRONG BAND`}
+            </div>
+            <p className="text-sm leading-snug" style={{ color: 'var(--cream)' }}>
+              {isBrag
+                ? 'You ship cleaner than most. Pin this audit to your profile and share the card with one click.'
+                : 'Sign in to see the step-by-step fixes and re-audit after each change — track the score climb.'}
+            </p>
+          </div>
+        )
+      })()}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
         <button
           onClick={onAudition}
@@ -1719,7 +1774,7 @@ function ResultCard({ result, onAudition, onTryAnother, onRerun }: ResultCardPro
           onMouseEnter={e => (e.currentTarget.style.background = 'var(--gold-400)')}
           onMouseLeave={e => (e.currentTarget.style.background = 'var(--gold-500)')}
         >
-          Audition your repo →
+          {polishScore >= 75 ? 'Claim & share your score →' : 'See how to fix these · Sign in →'}
         </button>
         <button
           onClick={() => {
@@ -1787,11 +1842,10 @@ function ResultCard({ result, onAudition, onTryAnother, onRerun }: ResultCardPro
         </button>
       </div>
       <p className="mt-3 font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
-        Walk-on result · anonymous · not on the public ladder. Polish Score is
-        the URL-lane scale — Lighthouse + meta + routing only · repo signals
-        (tests · CI · LICENSE · Brief · Tech) aren't visible from a URL alone.
-        Want the full 50-point report and a spot on the ladder? Audition your
-        own repo from the button above.
+        Walk-on result · anonymous · not yet on the public ladder. Polish Score
+        is the URL-lane scale — Lighthouse + meta + routing only. Sign in and
+        the audit becomes yours: full report, fix-it list, re-audit tracking,
+        ladder entry.
       </p>
     </div>
   )

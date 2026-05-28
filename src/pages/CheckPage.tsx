@@ -18,7 +18,7 @@
 // status unknown"; URL paste is the universal entry.
 
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { HeroUrlHook } from '../components/HeroUrlHook'
 
 // Stable id assigned to the audit input so the mode toggle above can
@@ -49,6 +49,7 @@ const MODE_COPY: Record<AuditMode, { placeholder: string; helper: React.ReactNod
 }
 
 export function CheckPage() {
+  const navigate = useNavigate()
   const [mode, setMode] = useState<AuditMode>('site')
 
   // Switching mode keeps any pasted value as-is — backend auto-detects
@@ -130,6 +131,16 @@ export function CheckPage() {
           inputId={URL_INPUT_ID}
           placeholder={MODE_COPY[mode].placeholder}
           helperText={MODE_COPY[mode].helper}
+          // After signup from the ad-LP, drop the new member straight
+          // onto the backstage view of the project they just audited.
+          // /submit (the default destination) is wrong here — that's
+          // the "I came to register a project" funnel, but ad-LP users
+          // came in via "see what AI missed" and want to keep looking
+          // at THEIR score, with the coach panel one tab away.
+          onPostSignIn={(projectId) => {
+            if (projectId) navigate(`/projects/${projectId}`)
+            else           navigate('/me')
+          }}
           prependBeforeForm={
             <div
               role="tablist"
