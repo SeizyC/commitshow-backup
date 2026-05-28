@@ -148,7 +148,7 @@ export function AuthModal({ open, onClose, initialMode = 'signin' }: AuthModalPr
           alt=""
           aria-hidden="true"
           className="block pointer-events-none select-none"
-          style={{ width: 64, height: 'auto', marginBottom: 0 }}
+          style={{ width: 112, height: 'auto', marginBottom: 0 }}
         />
       <div
         className="card-navy w-full p-8 max-h-[92vh] overflow-y-auto relative"
