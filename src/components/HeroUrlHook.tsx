@@ -188,7 +188,24 @@ const ENGINE_REASSURE_LINES = [
 ]
 const REASSURE_CYCLE_MS = 14_000
 
-export function HeroUrlHook() {
+/**
+ * HeroUrlHook props · chromeless mode for ad-traffic /check LP (2026-05-28).
+ *
+ * Default (no props): renders the full section with its own gold eyebrow,
+ *   h2 "Paste a URL · See what's broken", sub copy, and a tinted bg/border
+ *   section wrapper — the way LandingPage embeds it below the hero.
+ *
+ * chromeless=true: skips the section wrapper bg/border + eyebrow + h2 +
+ *   sub copy. The form/result/error/auth states render flat. The host
+ *   page (CheckPage) owns the headline + framing copy. Form + result UX
+ *   is identical to landing-page usage so we have a single audit-site-
+ *   preview integration to maintain.
+ */
+interface HeroUrlHookProps {
+  chromeless?: boolean
+}
+
+export function HeroUrlHook({ chromeless = false }: HeroUrlHookProps = {}) {
   const [url,    setUrl]    = useState('')
   const [phase,  setPhase]  = useState<Phase>('idle')
   const [error,  setError]  = useState<string | null>(null)
@@ -489,24 +506,36 @@ export function HeroUrlHook() {
   return (
     <section
       id="url-hook"
-      className="relative z-10 py-20 px-6 md:px-10 lg:px-24 xl:px-32 2xl:px-40 scroll-mt-20"
-      style={{
-        borderTop: '1px solid rgba(240,192,64,0.08)',
-        background: 'rgba(15,32,64,0.35)',
-      }}
+      className={
+        chromeless
+          ? 'relative z-10 px-6 md:px-10 lg:px-16 scroll-mt-20'
+          : 'relative z-10 py-20 px-6 md:px-10 lg:px-24 xl:px-32 2xl:px-40 scroll-mt-20'
+      }
+      style={
+        chromeless
+          ? undefined
+          : {
+              borderTop: '1px solid rgba(240,192,64,0.08)',
+              background: 'rgba(15,32,64,0.35)',
+            }
+      }
     >
-      <div className="max-w-5xl mx-auto">
-        <div className="font-mono text-xs tracking-widest mb-3" style={{ color: 'var(--gold-500)' }}>
-          // FAST LANE · NO REPO REQUIRED
-        </div>
-        <h2 className="font-display font-black text-3xl sm:text-4xl md:text-5xl mb-3 leading-tight" style={{ color: 'var(--cream)' }}>
-          Paste a URL<br />See what's broken
-        </h2>
-        <p className="font-light max-w-2xl mb-8" style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', lineHeight: 1.55 }}>
-          Drop your URL — we'll surface what's wrong with your project in under a minute.
-          Like what you see? Audition the project for a sharper audit and a spot on the
-          public ladder.
-        </p>
+      <div className={chromeless ? 'max-w-3xl mx-auto' : 'max-w-5xl mx-auto'}>
+        {!chromeless && (
+          <>
+            <div className="font-mono text-xs tracking-widest mb-3" style={{ color: 'var(--gold-500)' }}>
+              // FAST LANE · NO REPO REQUIRED
+            </div>
+            <h2 className="font-display font-black text-3xl sm:text-4xl md:text-5xl mb-3 leading-tight" style={{ color: 'var(--cream)' }}>
+              Paste a URL<br />See what's broken
+            </h2>
+            <p className="font-light max-w-2xl mb-8" style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', lineHeight: 1.55 }}>
+              Drop your URL — we'll surface what's wrong with your project in under a minute.
+              Like what you see? Audition the project for a sharper audit and a spot on the
+              public ladder.
+            </p>
+          </>
+        )}
 
         {phase === 'idle' && (
           <form onSubmit={startAudit} className="flex flex-col sm:flex-row gap-3 max-w-2xl">

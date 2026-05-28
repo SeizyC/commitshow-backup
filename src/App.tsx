@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { Suspense } from 'react'
 import { Nav } from './components/Nav'
 import { ScrollToTop } from './components/ScrollToTop'
@@ -54,6 +54,7 @@ const MyProductsPage          = lazy(() => import('./pages/MyProductsPage').then
 const TokenLeaderboardPage    = lazy(() => import('./pages/TokenLeaderboardPage').then(m => ({ default: m.TokenLeaderboardPage })))
 const PitchPage               = lazy(() => import('./pages/PitchPage').then(m => ({ default: m.PitchPage })))
 const PitchKPage              = lazy(() => import('./pages/PitchKPage').then(m => ({ default: m.PitchKPage })))
+const CheckPage               = lazy(() => import('./pages/CheckPage').then(m => ({ default: m.CheckPage })))
 
 // Suspense fallback — faint monospace ping that stays out of the way while
 // a chunk downloads. No spinner · matches the Ivy League restraint.
@@ -66,11 +67,16 @@ function RouteFallback() {
 }
 
 export default function App() {
+  const location = useLocation()
+  // /check is the ad-traffic LP · chrome-less. Drop the 200px sidebar
+  // gutter on that route so the LP spans full width. Nav itself short-
+  // circuits on the same path (see Nav.tsx).
+  const isChromeless = location.pathname === '/check'
   return (
     // 2026-05-05 · primary nav moved to a 200px left sidebar on md+.
     // md:pl-[200px] reserves the space without changing any page-level
     // padding (sections still set their own px-4/px-6 etc.).
-    <div className="relative min-h-screen md:pl-[200px]">
+    <div className={`relative min-h-screen ${isChromeless ? '' : 'md:pl-[200px]'}`}>
       <ScrollToTop />
       <Nav />
       {/* Long-lived-tab update toast · hidden when no new build detected.
@@ -131,6 +137,9 @@ export default function App() {
           <Route path="/audit"            element={<AuditPage />} />
           <Route path="/pitch"            element={<PitchPage />} />
           <Route path="/pitch-k"          element={<PitchKPage />} />
+          {/* Ad-traffic LP · paid acquisition entry · Nav + sidebar hidden
+              (Nav.tsx + App.tsx shell). One CTA: paste URL → 60s audit. */}
+          <Route path="/check"            element={<CheckPage />} />
           <Route path="/admin"            element={<AdminPage />} />
           <Route path="/admin/cmo"        element={<CmoPreviewPage />} />
           <Route path="/admin/emails"     element={<AdminEmailsPage />} />

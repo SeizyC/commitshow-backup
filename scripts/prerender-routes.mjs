@@ -301,6 +301,25 @@ const routes = [
     <p>This page authorizes a commitshow CLI device-flow login. Run <code>npx commitshow@latest login</code> in your terminal — it prints a 6-character code and opens this page in your browser. Sign in (if you haven't), enter the code, and a 90-day API token is provisioned for your account.</p>
     <p>If you don't have a code, this page does nothing. Start the flow from the CLI first.</p>`,
   },
+  {
+    // Ad-traffic landing page · paid acquisition target. Lean noscript so
+    // SEO crawlers + JS-disabled clients still get the value prop, but
+    // most traffic here is post-click + has JS · the SPA runs CheckPage.
+    path: '/check',
+    title:       'Audit your MVP before you ship · commit.show',
+    description: 'Paste your URL. We surface what AI missed across Lighthouse, security headers, broken routes, and 14 production-readiness frames. 60 seconds. Free. No signup.',
+    noscriptBody: `
+    <h1>Before you ship it, see what AI missed</h1>
+    <p>AI ships fast. AI also misses things. commit.show catches what your prompts forgot — Lighthouse (Perf · A11y · BP · SEO), security headers (CSP · HSTS · X-Frame · …), broken routes, completeness signals (og:image · favicon · meta · …), live URL health, and 14 production-readiness frames in total. 60 seconds. Free. No signup.</p>
+    <h2>How it works</h2>
+    <ol>
+      <li>Paste your live URL (any deployed site · closed-source OK)</li>
+      <li>Engine probes Lighthouse + routes + meta + security headers</li>
+      <li>Score + 3 strengths + 2 concerns land in under a minute</li>
+    </ol>
+    <h2>Have a public GitHub repo?</h2>
+    <p>The full audit also reads your repo (tests, CI, observability, TypeScript strict, lockfile, LICENSE, governance) and pushes the score ceiling higher. <a href="/submit">Audition with your repo</a>.</p>`,
+  },
 ]
 
 const escape = (s) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

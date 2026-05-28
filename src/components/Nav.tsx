@@ -130,6 +130,13 @@ export function Nav() {
     transition: 'color 0.2s, border-color 0.2s',
   })
 
+  // /check is the ad-traffic LP · chrome-less by design so the single
+  // audit CTA owns the fold. Nav + sidebar would compete for the user's
+  // first 2 seconds. Render nothing on that route. Hook calls above stay
+  // unconditional (Rules of Hooks). The page itself renders its own
+  // minimal commit.show wordmark.
+  if (location.pathname === '/check') return null
+
   return (
     <>
       <nav
