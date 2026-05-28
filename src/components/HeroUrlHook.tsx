@@ -231,6 +231,15 @@ interface HeroUrlHookProps {
    * for the "I'm here to register a project" intent path.
    */
   onPostSignIn?: (projectId: string | null) => void
+
+  /**
+   * Fired whenever the internal phase machine moves. CheckPage subscribes
+   * so it can swap a "sample of what you'll get" mockup in/out of the
+   * fold below the form — sample shows in idle, hides in running/ready
+   * (where the real progress list and result card take over the visual
+   * weight).
+   */
+  onPhaseChange?: (phase: Phase) => void
 }
 
 export function HeroUrlHook({
@@ -240,6 +249,7 @@ export function HeroUrlHook({
   inputId,
   prependBeforeForm,
   onPostSignIn,
+  onPhaseChange,
 }: HeroUrlHookProps = {}) {
   const [url,    setUrl]    = useState('')
   const [phase,  setPhase]  = useState<Phase>('idle')
@@ -259,6 +269,14 @@ export function HeroUrlHook({
   // members get 50/IP/day and have ticket-gated /submit as a separate
   // channel, so the CTA is noise for them).
   const [isAnon, setIsAnon] = useState(true)
+
+  // Surface internal phase changes to the host page. Host (CheckPage)
+  // uses this to swap a "sample of what you'll get" mockup in/out of the
+  // fold below the form so the ad-LP isn't a giant empty rectangle
+  // during idle.
+  useEffect(() => {
+    onPhaseChange?.(phase)
+  }, [phase, onPhaseChange])
 
   // Where to land users right after they sign in from this component.
   // Host pages can override via onPostSignIn (CheckPage routes to

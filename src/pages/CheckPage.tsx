@@ -48,9 +48,15 @@ const MODE_COPY: Record<AuditMode, { placeholder: string; helper: React.ReactNod
   },
 }
 
+// Phase mirrored from HeroUrlHook so the sample mockup below the form
+// hides during running/ready/error (where the real progress trail or
+// result card takes over the visual weight) and shows in idle.
+type HookPhase = 'idle' | 'running' | 'ready' | 'error'
+
 export function CheckPage() {
   const navigate = useNavigate()
   const [mode, setMode] = useState<AuditMode>('site')
+  const [hookPhase, setHookPhase] = useState<HookPhase>('idle')
 
   // Switching mode keeps any pasted value as-is — backend auto-detects
   // regardless. Refocus the input so the user can immediately type a
@@ -141,6 +147,7 @@ export function CheckPage() {
             if (projectId) navigate(`/projects/${projectId}`)
             else           navigate('/me')
           }}
+          onPhaseChange={setHookPhase}
           prependBeforeForm={
             <div
               role="tablist"
@@ -186,6 +193,14 @@ export function CheckPage() {
         />
       </div>
 
+      {/* ── Sample report mockup · 2026-05-28 · fills the dead zone below
+          the form during idle so ad-LP visitors can see THE SHAPE of
+          what's behind the 60-second wait. Static visual — not a live
+          example fetched from the DB, so we mark "// EXAMPLE" up top
+          to keep it honest. Hidden once analysis starts so the real
+          progress trail + result card take the visual lead. */}
+      {hookPhase === 'idle' && <SampleReportCard />}
+
       {/* ── Minimal trust strip · footer-equivalent.
           One line · brand attribution · legal links. Anything more
           would invite users away from the audit CTA. */}
@@ -202,5 +217,95 @@ export function CheckPage() {
         </div>
       </footer>
     </main>
+  )
+}
+
+/**
+ * SampleReportCard — static preview of what a real audit looks like.
+ *
+ * Drops into the dead zone below the audit form during idle phase so an
+ * ad-LP visitor doesn't see a giant empty rectangle while deciding
+ * whether to paste their URL. The numbers and bullets are illustrative
+ * (not pulled from a live row) so we mark "// EXAMPLE" up top and
+ * caption the bottom — keeps the promise honest. Visual borrows the
+ * tone of the real ResultCard (HeroUrlHook.tsx ResultCard) so the
+ * shape feels familiar once the actual one lands, just dimmed a notch
+ * (border at lower opacity, no shadow) so it reads as preview, not
+ * verdict.
+ */
+function SampleReportCard() {
+  return (
+    <section className="relative z-10 px-6 md:px-10 lg:px-16 mt-2 mb-12">
+      <div className="max-w-3xl">
+        <div className="font-mono text-[10px] tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>
+          // EXAMPLE · WHAT 60 SECONDS GETS YOU
+        </div>
+        <div
+          className="px-5 py-5"
+          style={{
+            background: 'rgba(6,12,26,0.4)',
+            border: '1px dashed rgba(240,192,64,0.18)',
+            borderRadius: '2px',
+          }}
+        >
+          {/* Header row · host + score */}
+          <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 mb-4">
+            <div>
+              <div className="font-mono text-[10px] tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>
+                URL AUDIT · partial · sample
+              </div>
+              <div className="font-display font-black text-xl sm:text-2xl" style={{ color: 'var(--cream)' }}>
+                acme-saas.io
+              </div>
+            </div>
+            <div className="ml-auto text-right">
+              <div className="font-mono text-[10px] tracking-widest" style={{ color: 'var(--text-muted)' }}>POLISH</div>
+              <div className="font-display font-black" style={{ color: 'var(--gold-500)', fontSize: '2rem', lineHeight: 1 }}>
+                76<span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}> / 100</span>
+              </div>
+              <div className="font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>Strong</div>
+            </div>
+          </div>
+
+          {/* Strengths / Concerns columns · mirrors real ResultCard layout */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
+            <div>
+              <div className="font-mono text-[10px] tracking-widest mb-2" style={{ color: 'var(--gold-500)' }}>+ STRENGTHS</div>
+              <ul className="space-y-1.5">
+                {[
+                  'Lighthouse mobile 92 · LCP 1.4s on Moto G4',
+                  'All 18 routes reachable · sitemap + canonical present',
+                  'Mobile a11y 96 · semantic landmarks throughout',
+                ].map((s, i) => (
+                  <li key={i} className="text-sm" style={{ color: 'var(--cream)', lineHeight: 1.5 }}>
+                    <span style={{ color: 'var(--gold-500)' }}>↑ </span>{s}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <div className="font-mono text-[10px] tracking-widest mb-2" style={{ color: 'var(--scarlet)' }}>− TO IMPROVE</div>
+              <ul className="space-y-1.5">
+                {[
+                  'Missing CSP and X-Frame-Options headers',
+                  'No og:image · social cards fall back to placeholder',
+                ].map((c, i) => (
+                  <li key={i} className="text-sm" style={{ color: 'var(--cream)', lineHeight: 1.5 }}>
+                    <span style={{ color: 'var(--scarlet)' }}>↓ </span>{c}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* Footer caption · keeps the "this is illustrative" line below
+              the report itself, where it doesn't fight the example data. */}
+          <div className="mt-4 pt-3 font-mono text-[10px] tracking-widest"
+               style={{ borderTop: '1px dashed rgba(248,245,238,0.08)', color: 'var(--text-muted)' }}>
+            ILLUSTRATIVE · YOUR AUDIT LANDS WITH YOUR REAL NUMBERS IN ~60 SECONDS
+          </div>
+        </div>
+      </div>
+    </section>
   )
 }
