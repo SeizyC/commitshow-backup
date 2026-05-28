@@ -78,19 +78,25 @@ export function CheckPage() {
 
       {/* ── Secondary path · repo audit.
           Kept as a small link rather than a second equal-weight input
-          to protect single-CTA conversion. The OSS-aware subset of
-          ad traffic still finds it. Routes to /submit which is the
-          full lane (Brief + GitHub URL + Live URL). */}
+          to protect single-CTA conversion. Copy reframed 2026-05-28 from
+          "USE THAT INSTEAD" (which implied URL-paste was deficient) to
+          "DEEPER AUDIT" (positive upgrade · also a natural self-select
+          target for mobile/library/CLI builders whose surface isn't a
+          standard web URL). Routes to /submit · full repo lane. */}
       <section className="relative z-10 px-6 md:px-10 lg:px-16 mt-6 mb-12">
         <div className="max-w-3xl mx-auto">
           <Link
             to="/submit"
+            // 2026-05-28 · default color promoted from text-muted → gold so
+            // the secondary path actually catches mobile/library/CLI
+            // builders' eyes. Previous muted tone made it read like fine
+            // print. Hover stays brighter for the same press-affordance.
             className="inline-flex items-center gap-2 font-mono text-xs tracking-widest transition-colors"
-            style={{ color: 'var(--text-muted)', textDecoration: 'none' }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--gold-500)')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+            style={{ color: 'var(--gold-500)', textDecoration: 'none' }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--gold-400)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--gold-500)')}
           >
-            HAVE A GITHUB REPO? USE THAT INSTEAD →
+            AUDITION YOUR REPO FOR A DEEPER AUDIT →
           </Link>
         </div>
       </section>

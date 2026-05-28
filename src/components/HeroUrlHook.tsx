@@ -574,7 +574,7 @@ export function HeroUrlHook({ chromeless = false }: HeroUrlHookProps = {}) {
               onMouseEnter={e => (e.currentTarget.style.background = 'var(--gold-400)')}
               onMouseLeave={e => (e.currentTarget.style.background = 'var(--gold-500)')}
             >
-              Audit it →
+              Analyze →
             </button>
           </form>
         )}
@@ -584,17 +584,22 @@ export function HeroUrlHook({ chromeless = false }: HeroUrlHookProps = {}) {
         )}
 
         {phase === 'idle' && (
+          // Helper line · 2026-05-28 reframe.
+          // Previous copy ("URL-only audits hit a natural ceiling …
+          // push past it") led with what we can't see — self-deprecating
+          // tone is wrong for the ad-LP first impression. New copy leads
+          // with what we DO measure across the surface so the wait feels
+          // valuable, then offers the repo path as an upgrade rather
+          // than as remediation for a perceived gap.
           <p className="mt-4 font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
-            Free · up to 5 audits per day from one IP. URL-only audits hit a natural ceiling
-            because the engine can't see your tests, CI, or repo signals. Audition with your
-            repo to push past it.
+            Free · ~60 seconds · checks Lighthouse, security headers, broken routes, and live URL health.
           </p>
         )}
 
         {phase === 'running' && (
           <div className="max-w-2xl">
             <div className="font-mono text-xs tracking-widest mb-1" style={{ color: 'var(--gold-500)' }}>
-              AUDITING {prettyHost(url)}
+              ANALYZING {prettyHost(url)}
             </div>
             <div className="font-mono text-[10px] tracking-widest mb-4" style={{ color: 'var(--text-muted)' }}>
               {STEP_LABELS.length} STAGES · SURFACE PROBES THEN ENGINE REASONING
