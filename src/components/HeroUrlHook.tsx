@@ -606,7 +606,11 @@ export function HeroUrlHook({
           // with what we DO measure across the surface so the wait feels
           // valuable. Host pages can override via `helperText` prop —
           // CheckPage uses that to mention site-OR-repo auto-detection.
-          <p className="mt-4 font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
+          // Color is text-secondary (55%) not text-muted (35%) — user
+          // 2026-05-28 feedback that the muted gray was too dark for
+          // the LP first impression. text-secondary still reads as
+          // meta beneath the form without disappearing.
+          <p className="mt-4 font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>
             {helperText ?? (
               <>Free · ~60 seconds · checks Lighthouse, security headers, broken routes, and live URL health.</>
             )}

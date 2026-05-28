@@ -99,7 +99,7 @@ export function CheckPage() {
         chromeless
         inputId={URL_INPUT_ID}
         placeholder="https://your-app.com  ·  or  github.com/owner/repo"
-        helperText={<>Free · ~60 seconds · paste a site URL <em style={{ color: 'var(--gold-500)', fontStyle: 'normal' }}>or a GitHub repo</em> · we auto-detect.</>}
+        helperText="Free · ~60 seconds · paste a site URL or a GitHub repo · we auto-detect."
       />
 
       {/* ── Secondary path · repo audit · 2026-05-28 redesigned.
