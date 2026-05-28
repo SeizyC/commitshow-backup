@@ -17,26 +17,46 @@
 // conversion. Ad audience is overwhelmingly "MVP deployed, repo public
 // status unknown"; URL paste is the universal entry.
 
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { HeroUrlHook } from '../components/HeroUrlHook'
 
-// Stable id assigned to the audit input so the "got a repo?" CTA below
-// can focus + scroll to it without a router redirect to /submit (which
-// gates on signup). audit-site-preview auto-forwards github URLs to the
-// anonymous walk-on path, so a single input handles both lanes.
+// Stable id assigned to the audit input so the mode toggle above can
+// focus it after a switch (keyboard users + iOS keyboard popup feel).
 const URL_INPUT_ID = 'check-audit-input'
 
+type AuditMode = 'site' | 'repo'
+
+// Mode-specific placeholder + helper. audit-site-preview already
+// auto-detects + forwards github URLs to the anonymous walk-on path,
+// so the toggle is a UX affordance for the user's mental model — the
+// backend doesn't care which mode they picked. We still tailor the
+// helper line so the user knows what each lane actually measures.
+const MODE_COPY: Record<AuditMode, { placeholder: string; helper: string }> = {
+  site: {
+    placeholder: 'https://your-app.com',
+    helper: 'Free · ~60 seconds · checks Lighthouse, security headers, broken routes, and live URL health.',
+  },
+  repo: {
+    placeholder: 'github.com/owner/repo',
+    helper: 'Free · ~60 seconds · reads README, tests, CI, license, observability signals, code health.',
+  },
+}
+
 export function CheckPage() {
-  // Focus + smoothly scroll to the audit input. Used by the secondary
-  // CTA which previously sent users to /submit (auth-gated · breaks
-  // the "free first, login later" flow the ad LP promises).
-  const focusAuditInput = () => {
-    const input = document.getElementById(URL_INPUT_ID)
-    if (!input) return
-    input.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    // Defer focus past the scroll so iOS doesn't pop the keyboard
-    // mid-scroll and leave the page jumping.
-    setTimeout(() => (input as HTMLInputElement).focus(), 320)
+  const [mode, setMode] = useState<AuditMode>('site')
+
+  // Switching mode keeps any pasted value as-is — backend auto-detects
+  // regardless. Refocus the input so the user can immediately type a
+  // new URL if they just switched lanes. setTimeout past the React
+  // re-render so the input gets the new placeholder first.
+  const switchMode = (next: AuditMode) => {
+    if (next === mode) return
+    setMode(next)
+    setTimeout(() => {
+      const input = document.getElementById(URL_INPUT_ID) as HTMLInputElement | null
+      input?.focus()
+    }, 0)
   }
   return (
     <main
@@ -88,50 +108,75 @@ export function CheckPage() {
         </div>
       </section>
 
+      {/* ── Mode toggle · Site URL ↔ GitHub repo.
+          Segmented control sitting right above the audit input so the
+          user picks their lane explicitly. Backend (audit-site-preview)
+          auto-detects regardless of which segment is active — the
+          toggle is a mental-model affordance and a placeholder/helper
+          driver. Replaces the previous secondary CTA ("BUILT AN APP …
+          PASTE THE GITHUB REPO ABOVE →") which user feedback 2026-05-28
+          flagged as still implying a redirect. */}
+      <section className="relative z-10 px-6 md:px-10 lg:px-16 mt-4">
+        <div className="max-w-3xl mx-auto">
+          <div
+            role="tablist"
+            aria-label="Audit input mode"
+            className="inline-flex font-mono text-xs tracking-widest"
+            style={{
+              border: '1px solid rgba(240,192,64,0.25)',
+              borderRadius: '2px',
+              background: 'rgba(6,12,26,0.4)',
+            }}
+          >
+            {(['site', 'repo'] as const).map((m) => {
+              const active = mode === m
+              const label = m === 'site' ? 'SITE URL' : 'GITHUB REPO'
+              return (
+                <button
+                  key={m}
+                  role="tab"
+                  type="button"
+                  aria-selected={active}
+                  onClick={() => switchMode(m)}
+                  className="px-4 py-2 transition-all"
+                  style={{
+                    background: active ? 'var(--gold-500)' : 'transparent',
+                    color: active ? 'var(--navy-900)' : 'var(--text-secondary)',
+                    border: 'none',
+                    cursor: active ? 'default' : 'pointer',
+                    fontWeight: active ? 600 : 400,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!active) e.currentTarget.style.color = 'var(--cream)'
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!active) e.currentTarget.style.color = 'var(--text-secondary)'
+                  }}
+                >
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
       {/* ── Audit entry · chromeless HeroUrlHook = form + state machine +
           result card from the landing page, with its own section bg/
           eyebrow/h2/sub copy suppressed. Sole audit surface on the LP.
-          Placeholder + helper expanded to advertise that the same box
-          accepts a GitHub repo URL — audit-site-preview auto-forwards
-          to the anonymous walk-on path. No signup required to see a
+          Placeholder + helper driven by the mode toggle above so the
+          user's lane choice is reflected in the input + meta line.
+          audit-site-preview auto-forwards github URLs to the anonymous
+          walk-on path regardless, so no signup is required to see a
           result either way. */}
-      <HeroUrlHook
-        chromeless
-        inputId={URL_INPUT_ID}
-        placeholder="https://your-app.com  ·  or  github.com/owner/repo"
-        helperText="Free · ~60 seconds · paste a site URL or a GitHub repo · we auto-detect."
-      />
-
-      {/* ── Secondary path · repo audit · 2026-05-28 redesigned.
-          PREVIOUSLY: <Link to="/submit"> · which gated the repo lane on
-          signup and broke the LP promise ("run a basic audit first,
-          then login"). User feedback 2026-05-28 confirmed.
-          NOW: a button that focuses the URL input above. Since audit-
-          site-preview auto-detects + forwards github URLs to the
-          anonymous walk-on path, the same input handles both lanes
-          without a redirect. Signup CTA lives on the result card,
-          AFTER trust is built by a real score landing. */}
-      <section className="relative z-10 px-6 md:px-10 lg:px-16 mt-6 mb-12">
-        <div className="max-w-3xl mx-auto">
-          <button
-            type="button"
-            onClick={focusAuditInput}
-            className="inline-flex items-center gap-2 font-mono text-xs tracking-widest transition-colors"
-            style={{
-              color: 'var(--gold-500)',
-              textDecoration: 'none',
-              background: 'none',
-              border: 'none',
-              padding: 0,
-              cursor: 'pointer',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--gold-400)')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--gold-500)')}
-          >
-            BUILT AN APP, LIBRARY, OR CLI? PASTE THE GITHUB REPO ABOVE →
-          </button>
-        </div>
-      </section>
+      <div className="mb-12">
+        <HeroUrlHook
+          chromeless
+          inputId={URL_INPUT_ID}
+          placeholder={MODE_COPY[mode].placeholder}
+          helperText={MODE_COPY[mode].helper}
+        />
+      </div>
 
       {/* ── Minimal trust strip · footer-equivalent.
           One line · brand attribution · legal links. Anything more
