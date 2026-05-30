@@ -45,7 +45,9 @@ export function FeaturedLanes() {
   const [creators,   setCreators]   = useState<Record<string, CreatorIdentity>>({})
 
   useEffect(() => {
-    Promise.all([fetchBackstageReady(), fetchClimbing(), fetchGraduating()]).then(async ([b, c, g]) => {
+    // ON STAGE grid renders 9 cards (CEO 2026-05-30); other lanes stay
+    // at the LANE_LIMIT default for the carousel rhythm.
+    Promise.all([fetchBackstageReady(), fetchClimbing(9), fetchGraduating()]).then(async ([b, c, g]) => {
       setBackstage({ loading: false, rows: b })
       setClimbers({ loading: false, rows: c })
       setGraduating({ loading: false, rows: g })
@@ -89,8 +91,8 @@ export function FeaturedLanes() {
         empty="No movers yet — be the first to push score upward."
         layout="grid"
         footerCta={{
-          label: 'View the full ladder →',
-          to:    '/products?view=cards',
+          label: 'View the full on-stage list →',
+          to:    '/products/onstage',
         }}
       >
         {climbers.rows.map(p => (

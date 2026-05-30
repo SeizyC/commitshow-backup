@@ -121,6 +121,10 @@ export default function App() {
               Old /ladder URL preserved as redirect for links in the
               wild · keeps tweets, blog posts, AI agent memory working. */}
           <Route path="/products"         element={<LadderPage />} />
+          {/* /products/onstage · ON STAGE-only variant of LadderPage
+              (status='active' filter, no Spotlight lanes, forced cards
+              view). Wired from FeaturedLanes' ON STAGE footer CTA. */}
+          <Route path="/products/onstage" element={<LadderPage stage="on_stage" />} />
           <Route path="/ladder"           element={<Navigate to="/products" replace />} />
           <Route path="/search"           element={<SearchPage />} />
           {/* Member-detail page · same component for both /scouts/:id and

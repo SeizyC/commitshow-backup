@@ -32,8 +32,12 @@ const listCache    = new Map<string, CacheEntry<LadderRow[]>>()
 const projectCache = new Map<string, CacheEntry<Array<{ project: Project; rank: number }>>>()
 const countsCache  = new Map<string, CacheEntry<Record<LadderCategory, number>>>()
 
-function cacheKey(category: LadderCategory | 'all', window: LadderWindow): string {
-  return `${category}|${window}`
+function cacheKey(
+  category: LadderCategory | 'all',
+  window: LadderWindow,
+  status: 'all' | 'active' | 'graduated' | 'backstage' = 'all',
+): string {
+  return `${category}|${window}|${status}`
 }
 function isFresh<T>(entry: CacheEntry<T> | undefined): entry is CacheEntry<T> {
   return !!entry && (Date.now() - entry.fetchedAt) < CACHE_TTL_MS
@@ -51,8 +55,12 @@ export function getCachedLadder(category: LadderCategory | 'all', window: Ladder
   const e = listCache.get(cacheKey(category, window))
   return isFresh(e) ? e.data : null
 }
-export function getCachedLadderProjects(category: LadderCategory | 'all', window: LadderWindow): Array<{ project: Project; rank: number }> | null {
-  const e = projectCache.get(cacheKey(category, window))
+export function getCachedLadderProjects(
+  category: LadderCategory | 'all',
+  window: LadderWindow,
+  status: 'all' | 'active' | 'graduated' | 'backstage' = 'all',
+): Array<{ project: Project; rank: number }> | null {
+  const e = projectCache.get(cacheKey(category, window, status))
   return isFresh(e) ? e.data : null
 }
 export function getCachedCounts(window: LadderWindow): Record<LadderCategory, number> | null {
@@ -209,7 +217,9 @@ export async function fetchLadderProjects(
   category: LadderCategory | 'all',
   window:   LadderWindow,
   limit = 50,
+  opts: { status?: 'active' | 'graduated' | 'backstage' } = {},
 ): Promise<{ project: Project; rank: number }[]> {
+  const statusFilter = opts.status ?? 'all'
   const rankCol = RANK_COLUMN[window]
   let q = supabase
     .from('ladder_rankings_mv')
@@ -224,10 +234,12 @@ export async function fetchLadderProjects(
 
   const idList = (ids as unknown as Array<{ project_id: string }>).map(r => r.project_id)
   const { PUBLIC_PROJECT_COLUMNS } = await import('./supabase')
-  const { data: projects } = await supabase
+  let pq = supabase
     .from('projects')
     .select(PUBLIC_PROJECT_COLUMNS)
     .in('id', idList)
+  if (opts.status) pq = pq.eq('status', opts.status)
+  const { data: projects } = await pq
   if (!projects) return []
 
   const rankMap = new Map<string, number>()
@@ -241,7 +253,7 @@ export async function fetchLadderProjects(
     .map(id => projectMap.get(id))
     .filter((p): p is Project => !!p)
     .map(p => ({ project: p, rank: rankMap.get(p.id) ?? 0 }))
-  projectCache.set(cacheKey(category, window), { data: result, fetchedAt: Date.now() })
+  projectCache.set(cacheKey(category, window, statusFilter), { data: result, fetchedAt: Date.now() })
   return result
 }
 

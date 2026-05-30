@@ -46,10 +46,24 @@ function isView(v: string | null): v is ViewMode {
   return v === 'list' || v === 'cards'
 }
 
-export function LadderPage() {
+interface LadderPageProps {
+  /**
+   * `'all'`     · default — `/products` · shows every ranked project
+   *                (status active + graduated), Spotlight (lanes), and
+   *                the rank/cards/map views.
+   * `'on_stage'` · `/products/onstage` · narrows to status='active' only,
+   *                hides the Spotlight section (it would be redundant with
+   *                the page's whole point), and re-labels the header.
+   */
+  stage?: 'all' | 'on_stage'
+}
+
+export function LadderPage({ stage = 'all' }: LadderPageProps = {}) {
   const navigate    = useNavigate()
   const { user }    = useAuth()
   const [params, setParams] = useSearchParams()
+  const isStagePage = stage === 'on_stage'
+  const statusFilter: 'active' | undefined = isStagePage ? 'active' : undefined
 
   // Stage buckets for the dynamic header (2026-05-17). Same data the
   // Hero CTA picker uses · here it drives the eyebrow + title + CTA so
@@ -64,11 +78,24 @@ export function LadderPage() {
     fetchMemberStageBuckets(user.id).then(b => { if (alive) setBuckets(b) })
     return () => { alive = false }
   }, [user?.id])
-  const headerCopy = useMemo(() => pickProductsHeader(user, buckets), [user, buckets])
+  const baseHeaderCopy = useMemo(() => pickProductsHeader(user, buckets), [user, buckets])
+  // Stage-specific header overrides. /products/onstage gets its own
+  // eyebrow/title/sub + a back-link CTA to the parent ladder.
+  const headerCopy = isStagePage
+    ? {
+        eyebrow:  '// ON STAGE',
+        title:    'Active on the league',
+        sub:      'Every project currently auditioning. Sort by category, window, or climb — all of it, not just the spotlight rail.',
+        ctaLabel: '← Back to ladder',
+        ctaTo:    '/products',
+      }
+    : baseHeaderCopy
 
   const category: CatFilter      = isCategoryFilter(params.get('cat')) ? params.get('cat') as CatFilter : 'all'
   const window:   LadderWindow   = isWindow(params.get('window'))   ? params.get('window') as LadderWindow : 'week'
-  const view:     ViewMode       = isView(params.get('view'))       ? params.get('view') as ViewMode : 'list'
+  // /products/onstage forces cards (magazine grid) since the rank list
+  // would just be a redundant copy of /products list view.
+  const view:     ViewMode       = isStagePage ? 'cards' : (isView(params.get('view')) ? params.get('view') as ViewMode : 'list')
   // form_factor filter UI removed 2026-05-12 · form is internal B2B
   // analytics now (still drives audit rubric slot semantics server-side).
 
@@ -101,7 +128,7 @@ export function LadderPage() {
     if (cachedCounts) setCounts(cachedCounts)
 
     if (view === 'cards') {
-      const cachedCards = getCachedLadderProjects(category, window)
+      const cachedCards = getCachedLadderProjects(category, window, statusFilter ?? 'all')
       if (cachedCards) {
         setCardRows(cachedCards)
         setLoading(false)
@@ -119,7 +146,7 @@ export function LadderPage() {
     }
 
     const dataPromise = view === 'cards'
-      ? fetchLadderProjects(category, window, 50)
+      ? fetchLadderProjects(category, window, 50, statusFilter ? { status: statusFilter } : {})
       : fetchLadder(category, window, 50)
 
     Promise.all([dataPromise, fetchLadderCounts(window)]).then(async ([data, counts]) => {
@@ -144,7 +171,7 @@ export function LadderPage() {
       setLoading(false)
     })
     return () => { alive = false }
-  }, [category, window, view])
+  }, [category, window, view, statusFilter])
 
   const updateParam = (k: string, v: string) => {
     const next = new URLSearchParams(params)
@@ -217,10 +244,15 @@ export function LadderPage() {
           </NavLink>
         </header>
 
-        {/* ── Spotlight (lanes from old /projects) ── */}
-        <div className="mb-8">
-          <FeaturedLanes />
-        </div>
+        {/* ── Spotlight (lanes from old /projects) ──
+            Hidden on /products/onstage · that page IS the full on-stage
+            grid, so re-rendering the ON STAGE lane above it would be
+            visually redundant. */}
+        {!isStagePage && (
+          <div className="mb-8">
+            <FeaturedLanes />
+          </div>
+        )}
 
         {/* ── Time window strip ── */}
         <div className="mb-3 flex items-center gap-2 flex-wrap">
@@ -288,11 +320,14 @@ export function LadderPage() {
             internal B2B / partnership taxonomy (also drives auditor rubric
             slot semantics) but is no longer shown to ladder visitors. */}
 
-        {/* ── View toggle · sits below the category strip, right-aligned · paired with hint on the left ── */}
+        {/* ── View toggle · sits below the category strip, right-aligned · paired with hint on the left.
+            Hidden on /products/onstage where view is force-cards · the
+            list mode would just duplicate the parent /products. */}
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="font-mono text-[11px]" style={{ color: 'var(--text-muted)' }}>
             {hint}
           </div>
+          {!isStagePage && (
           <div className="flex items-center gap-2 shrink-0">
             {(['list', 'cards'] as ViewMode[]).map((v, i) => {
               const active = v === view
@@ -337,6 +372,7 @@ export function LadderPage() {
               </NavLink>
             </span>
           </div>
+          )}
         </div>
 
         {/* ── List view (rank-first) ── */}

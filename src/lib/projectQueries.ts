@@ -192,7 +192,7 @@ export async function fetchBackstageReady(): Promise<Project[]> {
 //   project snapshots got pushed out of the LANE_LIMIT*2 window before
 //   we ever saw them. Filtering at the snapshot fetch keeps active rows
 //   in scope regardless of how much preview traffic landed in between.
-export async function fetchClimbing(): Promise<Array<Project & { delta: number }>> {
+export async function fetchClimbing(limit = LANE_LIMIT): Promise<Array<Project & { delta: number }>> {
   // Pull recent snapshots with positive delta, newest first, but ONLY
   // those whose project is currently active. PostgREST embeds the join
   // and the !inner modifier turns it into an INNER JOIN with the filter
@@ -214,7 +214,7 @@ export async function fetchClimbing(): Promise<Array<Project & { delta: number }
       bestByProject.set(s.project_id, { delta: s.score_total_delta ?? 0 })
     }
   }
-  const projectIds = Array.from(bestByProject.keys()).slice(0, LANE_LIMIT * 2)
+  const projectIds = Array.from(bestByProject.keys()).slice(0, limit * 2)
   if (projectIds.length === 0) return []
 
   const { data: rows } = await supabase
@@ -228,7 +228,7 @@ export async function fetchClimbing(): Promise<Array<Project & { delta: number }
   return (rows as unknown as Project[])
     .map(p => ({ ...p, delta: bestByProject.get(p.id)?.delta ?? 0 }))
     .sort((a, b) => b.delta - a.delta)
-    .slice(0, LANE_LIMIT)
+    .slice(0, limit)
 }
 
 // 3) Encore — products that have crossed the Encore line (score ≥ 85).
