@@ -135,7 +135,7 @@ export function Nav() {
   // first 2 seconds. Render nothing on that route. Hook calls above stay
   // unconditional (Rules of Hooks). The page itself renders its own
   // minimal commit.show wordmark.
-  if (location.pathname === '/check') return null
+  if (location.pathname === '/check' || location.pathname.startsWith('/v2')) return null
 
   return (
     <>

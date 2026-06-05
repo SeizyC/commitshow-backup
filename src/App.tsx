@@ -55,6 +55,8 @@ const TokenLeaderboardPage    = lazy(() => import('./pages/TokenLeaderboardPage'
 const PitchPage               = lazy(() => import('./pages/PitchPage').then(m => ({ default: m.PitchPage })))
 const PitchKPage              = lazy(() => import('./pages/PitchKPage').then(m => ({ default: m.PitchKPage })))
 const CheckPage               = lazy(() => import('./pages/CheckPage').then(m => ({ default: m.CheckPage })))
+const DirectoryPage           = lazy(() => import('./pages/DirectoryPage').then(m => ({ default: m.DirectoryPage })))
+const ListingDetailPage       = lazy(() => import('./pages/ListingDetailPage').then(m => ({ default: m.ListingDetailPage })))
 
 // Suspense fallback — faint monospace ping that stays out of the way while
 // a chunk downloads. No spinner · matches the Ivy League restraint.
@@ -71,7 +73,7 @@ export default function App() {
   // /check is the ad-traffic LP · chrome-less. Drop the 200px sidebar
   // gutter on that route so the LP spans full width. Nav itself short-
   // circuits on the same path (see Nav.tsx).
-  const isChromeless = location.pathname === '/check'
+  const isChromeless = location.pathname === '/check' || location.pathname.startsWith('/v2')
   return (
     // 2026-05-05 · primary nav moved to a 200px left sidebar on md+.
     // md:pl-[200px] reserves the space without changing any page-level
@@ -144,6 +146,8 @@ export default function App() {
           {/* Ad-traffic LP · paid acquisition entry · Nav + sidebar hidden
               (Nav.tsx + App.tsx shell). One CTA: paste URL → 60s audit. */}
           <Route path="/check"            element={<CheckPage />} />
+          <Route path="/v2"               element={<DirectoryPage />} />
+          <Route path="/v2/s/:slug"       element={<ListingDetailPage />} />
           <Route path="/admin"            element={<AdminPage />} />
           <Route path="/admin/cmo"        element={<CmoPreviewPage />} />
           <Route path="/admin/emails"     element={<AdminEmailsPage />} />

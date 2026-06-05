@@ -1,0 +1,525 @@
+// legit — directory (Atlas) UI. Self-contained amber editorial design,
+// scoped under `.lgt` / `l-` classes so it never touches the navy app.
+// Reads the `listings` table (populated by the ingest engine).
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '../lib/auth'
+import { AuthModal } from '../components/AuthModal'
+import { supabase } from '../lib/supabase'
+import {
+  fetchNotifications, fetchUnreadCount, markRead, markAllRead,
+  subscribeNotifications, destinationFor, titleFor, type NotificationRow,
+} from '../lib/notifications'
+
+export type Listing = {
+  id: string; slug: string; name: string; domain: string; url: string
+  platform: string | null; category: string | null
+  tagline: string | null; description: string | null
+  who_for: string[] | null; features: string[] | null
+  pricing: string | null; how_to_use: string | null
+  image_url: string | null; source: string | null; meta: string | null
+  has_pricing: boolean; js_starved: boolean
+  info_as_of: string | null; created_at: string
+}
+
+const CSS = `
+.lgt{min-height:100vh;background:#FAF8F3;color:#2C261D;font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.lgt a{color:inherit;text-decoration:none}
+.lgt h1,.lgt h2,.lgt h3{font-family:Fraunces,Georgia,serif;font-weight:600;letter-spacing:-.01em;color:#211C15;margin:0}
+.lgt img{max-width:100%}
+.l-wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+.l-h{position:sticky;top:0;background:rgba(250,248,243,.92);backdrop-filter:blur(8px);border-bottom:1px solid #E9E2D4;z-index:20}
+.l-hd{display:flex;align-items:center;gap:18px;height:60px}
+.l-logo{font-family:Fraunces;font-weight:700;font-size:23px;color:#211C15;display:flex;align-items:center;gap:8px}
+.l-dot{width:9px;height:9px;border-radius:50%;background:#B5791C;display:inline-block}
+.l-search{flex:1;max-width:380px;background:#fff;border:1px solid #E9E2D4;border-radius:8px;padding:8px 12px;color:#9A9080;font-size:14px;cursor:text;display:flex;align-items:center;gap:8px}
+.l-auth{margin-left:auto;display:flex;align-items:center;gap:14px}.l-login{font-size:14px;font-weight:500;color:#6E6557;cursor:pointer}
+.l-btn{background:#B5791C;color:#fff;font-weight:600;font-size:14px;border:none;border-radius:8px;padding:9px 16px;cursor:pointer;display:inline-block}.l-btn:hover{background:#97600F}
+.l-btn.ghost{background:transparent;color:#97600F;border:1px solid #E7D4AC}
+.lgt a.l-btn{color:#fff}.lgt a.l-btn.ghost{color:#97600F}
+.l-rate{display:flex;align-items:center;gap:9px;margin:9px 0 13px}
+.l-stars{display:inline-flex;gap:2px;align-items:center}
+.l-raten{font-size:13px;color:#9A9080;font-family:'JetBrains Mono',monospace}
+.l-lockic{display:block;margin:14px auto 0}
+.l-avatar{width:34px;height:34px;border-radius:50%;background:#B5791C;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;cursor:pointer;font-size:15px}
+/* landing hero */
+.l-herobig{padding:60px 0 38px;text-align:center;border-bottom:1px solid #E9E2D4;background:linear-gradient(180deg,#FBF8F1 0%,#FAF8F3 100%)}
+.l-herobig h1{font-size:clamp(34px,5vw,52px);line-height:1.05;max-width:800px;margin:0 auto}
+.l-herobig .sub{font-size:18px;color:#6E6557;max-width:640px;margin:18px auto 28px;line-height:1.5}
+.l-bigsearch{max-width:560px;margin:0 auto;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #E0D8C8;border-radius:12px;padding:14px 18px;box-shadow:0 2px 16px rgba(150,110,30,.07)}
+.l-bigsearch input{border:none;outline:none;flex:1;font-size:16px;background:transparent;color:#2C261D;font-family:Inter,sans-serif}
+.lgt input:focus,.lgt input:focus-visible{outline:none!important;box-shadow:none!important}
+.l-statrow{display:flex;gap:22px;justify-content:center;margin-top:22px;font-size:12.5px;color:#9A9080;font-family:'JetBrains Mono',monospace;flex-wrap:wrap}.l-statrow b{color:#211C15}
+.l-cattiles{display:flex;flex-wrap:wrap;gap:8px;padding:24px 0 6px;justify-content:center}
+.l-cattile{font-size:13.5px;color:#6E6557;background:#fff;border:1px solid #E9E2D4;border-radius:999px;padding:8px 16px;cursor:pointer;font-weight:500}.l-cattile:hover{border-color:#E7D4AC;color:#211C15}.l-cattile.on{background:#B5791C;color:#fff;border-color:#B5791C}
+.l-feedhead{display:flex;align-items:baseline;justify-content:space-between;padding:26px 0 2px;border-bottom:1px solid #E9E2D4;margin-bottom:2px}.l-feedhead h2{font-size:19px}.l-feedhead .c{font-size:12.5px;color:#9A9080;font-family:'JetBrains Mono',monospace}
+.l-prehead{font-size:11.5px;font-family:'JetBrains Mono',monospace;color:#9A9080;letter-spacing:.07em;text-transform:uppercase;padding:26px 0 0}
+.l-premium{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;padding:12px 0 4px}
+.l-card{background:#fff;border:1px solid #E9E2D4;border-radius:14px;cursor:pointer;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 1px 8px rgba(150,110,30,.04);transition:box-shadow .15s,border-color .15s,transform .15s}.l-card:hover{border-color:#E7D4AC;box-shadow:0 10px 28px rgba(150,110,30,.13);transform:translateY(-2px)}
+.l-cimg{width:100%;aspect-ratio:1200/630;background:linear-gradient(135deg,#C99A2E,#A66A18);background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;color:#fff;font-family:Fraunces;font-weight:700;font-size:46px}
+.l-cbody{padding:13px 16px 15px;display:flex;flex-direction:column;gap:4px}
+.l-cn{font-family:Fraunces;font-weight:600;font-size:18px;color:#211C15;line-height:1.15}.l-cdm{font-size:11.5px;color:#9A9080;font-family:'JetBrains Mono',monospace}
+.l-ct{font-size:13px;color:#6E6557;line-height:1.45;margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+@media(max-width:820px){.l-premium{grid-template-columns:1fr}}
+/* tag reactions (detail) */
+.l-rx{border-top:1px solid #E9E2D4;padding:24px 0 0;margin-top:8px}
+.l-rxh{font-size:20px;font-family:Fraunces,Georgia,serif;font-weight:600;color:#211C15;margin-bottom:4px}
+.l-rxsub{font-size:13px;color:#9A9080;margin-bottom:16px}
+.l-rxuse{display:inline-flex;align-items:center;gap:9px;background:#fff;border:1px solid #E0D8C8;border-radius:10px;padding:10px 16px;cursor:pointer;font-weight:600;font-size:14px;color:#211C15;margin-bottom:16px;transition:.12s}.l-rxuse:hover{border-color:#E7D4AC}.l-rxuse.on{background:#B5791C;color:#fff;border-color:#B5791C}.l-rxuse.on:hover{background:#97600F}
+.l-rxuse .c{font-family:'JetBrains Mono',monospace;font-size:13px;opacity:.85}
+.l-rxtags{display:flex;flex-wrap:wrap;gap:8px}
+.l-rxt{display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid #E9E2D4;border-radius:999px;padding:7px 14px;cursor:pointer;font-size:13.5px;font-weight:500;color:#2C261D;transition:.12s;user-select:none}.l-rxt:hover{border-color:#E7D4AC}
+.l-rxt.on{background:#F6EBD4;border-color:#E7D4AC;color:#97600F}.l-rxt.warn.on{background:#FBEFD9}
+.l-rxt .c{font-family:'JetBrains Mono',monospace;font-size:12px;color:#B5A88C}.l-rxt.on .c{color:#B5791C}
+/* detail */
+.l-crumb{font-size:13px;color:#6E6557;padding:20px 0 0}
+.l-head{padding:26px 0 8px}.l-head h1{font-size:30px}
+.l-hero{display:flex;gap:22px;align-items:flex-start;padding:18px 0 26px;border-bottom:1px solid #E9E2D4}
+.l-ico{width:60px;height:60px;border-radius:14px;background:linear-gradient(135deg,#C99A2E,#A66A18);color:#fff;font-family:Fraunces;font-weight:700;font-size:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background-size:cover;background-position:center}
+.l-one{font-size:17px;color:#6E6557;margin:7px 0 12px;max-width:600px}
+.l-pills{display:flex;flex-wrap:wrap;gap:7px}.l-pill{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#6E6557;background:#F4F0E8;border:1px solid #E9E2D4;border-radius:999px;padding:3px 10px}.l-pill.plat{color:#97600F;background:#F6EBD4;border-color:#E7D4AC}
+.l-heroact{margin-left:auto;display:flex;flex-direction:column;gap:9px;align-items:flex-end;flex-shrink:0}.l-prov{font-size:12px;color:#9A9080;text-align:right}
+.l-cols{display:grid;grid-template-columns:1fr 320px;gap:40px;padding:30px 0 10px}
+.l-blk{margin-bottom:28px}.l-blk h2{font-size:20px;margin-bottom:10px}.l-lead{color:#2C261D}
+.l-iconblk{display:flex;align-items:center;justify-content:center;background:#F4F0E8;border:1px solid #E9E2D4;border-radius:12px;padding:38px}
+.l-iconimg{width:104px;height:104px;object-fit:contain;border-radius:22px;background:#fff;border:1px solid #EDE6D8}
+.l-who{display:flex;flex-wrap:wrap;gap:8px}.l-chip{background:#fff;border:1px solid #E9E2D4;border-radius:7px;padding:6px 12px;font-size:13.5px;font-weight:500;color:#2C261D}
+.l-feat{list-style:none;padding:0;margin:0;display:grid;gap:9px}.l-feat li{padding-left:20px;position:relative;color:#2C261D}.l-feat li::before{content:'\\2713';position:absolute;left:0;color:#B5791C;font-weight:700}
+.l-note{font-size:12px;color:#9A9080;font-style:italic}
+.l-facts{background:#fff;border:1px solid #E9E2D4;border-radius:12px;padding:6px 16px}.l-f{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #E9E2D4;font-size:13.5px}.l-f:last-child{border-bottom:none}.l-k{color:#6E6557}.l-v{font-weight:500;text-align:right}
+.l-lab{background:#F4F0E8;border:1px solid #E9E2D4;border-radius:14px;padding:18px;font-family:'JetBrains Mono',monospace;text-align:center}.l-lh{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:#97600F;font-weight:600;text-align:left}
+.l-lockt{font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#211C15;margin-top:14px}.l-locksub{font-family:Inter,sans-serif;font-size:11.5px;color:#6E6557;max-width:230px;margin:6px auto 10px}
+.l-reviews{border-top:1px solid #E9E2D4;padding:26px 0 0;margin-top:8px}.l-empty{font-size:13px;color:#6E6557;background:#F4F0E8;border:1px dashed #E9E2D4;border-radius:10px;padding:16px}
+.l-foot{border-top:1px solid #E9E2D4;margin-top:36px;padding:22px 0 50px;font-size:12.5px;color:#9A9080}
+.l-row{display:flex;gap:18px;align-items:flex-start;padding:20px 4px;border-bottom:1px solid #E9E2D4;cursor:pointer;border-radius:10px;transition:background .12s}.l-row:hover{background:#fff}
+.l-ic{width:72px;height:72px;border-radius:14px;background:linear-gradient(135deg,#C99A2E,#A66A18);color:#fff;font-weight:700;font-size:30px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:Fraunces;background-size:cover;background-position:center;overflow:hidden}
+.l-fav{background:#fff;border:1px solid #EDE6D8}.l-fav img{width:58%;height:58%;object-fit:contain}
+.l-nm{font-weight:600;color:#211C15;font-size:19px;font-family:Fraunces,Georgia,serif;line-height:1.2}.l-dm{font-size:12.5px;color:#9A9080;font-family:'JetBrains Mono',monospace;font-weight:400}.l-ol{font-size:15px;color:#5A5347;margin-top:5px;line-height:1.55;max-width:680px}
+.l-tag{font-size:11px;font-family:'JetBrains Mono',monospace;padding:3px 9px;border-radius:5px;background:#F4F0E8;color:#6E6557;border:1px solid #E9E2D4}.l-tag.warn{background:#FBEFD9;color:#97600F;border-color:#E7D4AC}
+/* header nav + dropdowns + bell */
+.l-nav{display:flex;align-items:center;gap:4px}
+.l-navi{font-size:14px;font-weight:500;color:#6E6557;padding:7px 11px;border-radius:7px;cursor:pointer;display:inline-flex;align-items:center;gap:5px}.l-navi:hover{background:#F1EADE;color:#211C15}.l-navi.on{color:#211C15;background:#F1EADE}
+.l-ddwrap{position:relative}
+.l-dd{position:absolute;top:calc(100% + 8px);min-width:210px;background:#fff;border:1px solid #E9E2D4;border-radius:12px;box-shadow:0 12px 34px rgba(60,45,20,.16);padding:6px;z-index:40}
+.l-dd.right{right:0}.l-dd.left{left:0}
+.l-ddi{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:8px;font-size:14px;color:#2C261D;cursor:pointer;white-space:nowrap}.l-ddi:hover{background:#F4F0E8}.l-ddi .s{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#9A9080}
+.l-ddsep{height:1px;background:#E9E2D4;margin:6px 8px}
+.l-ddhead{padding:11px 11px 7px}.l-ddname{font-weight:600;font-size:14.5px;color:#211C15}.l-ddmail{font-size:12px;color:#9A9080;margin-top:1px;overflow:hidden;text-overflow:ellipsis}
+.l-bell{position:relative;width:36px;height:36px;border-radius:9px;border:1px solid #E9E2D4;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6E6557}.l-bell:hover{border-color:#E7D4AC;color:#211C15}
+.l-belldot{position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;padding:0 4px;background:#C8102E;color:#fff;border:2px solid #FAF8F3;border-radius:9px;font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace;display:flex;align-items:center;justify-content:center}
+.l-npnl{position:absolute;top:calc(100% + 8px);right:0;width:340px;max-height:72vh;overflow-y:auto;background:#fff;border:1px solid #E9E2D4;border-radius:12px;box-shadow:0 14px 38px rgba(60,45,20,.18);z-index:40}
+.l-nph{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid #E9E2D4;position:sticky;top:0;background:#fff}.l-nph b{font-family:Fraunces;font-size:15px;color:#211C15}.l-nmark{font-size:12px;color:#97600F;cursor:pointer;font-weight:500}
+.l-nr{display:flex;gap:11px;align-items:flex-start;padding:12px 16px;border-bottom:1px solid #F1EADE;cursor:pointer}.l-nr:hover{background:#FBF8F1}.l-nr.unread{background:#FCF6E9}.l-nr.unread:hover{background:#F9F0DD}
+.l-nav-av{width:30px;height:30px;border-radius:8px;background:#B5791C;color:#fff;font-weight:600;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;background-size:cover;background-position:center;font-family:'JetBrains Mono',monospace}
+.l-nrt{font-size:13px;color:#2C261D;line-height:1.45}.l-nrtime{font-size:11px;color:#9A9080;font-family:'JetBrains Mono',monospace;margin-top:2px}
+.l-nempty{padding:34px 20px;text-align:center;font-size:13px;color:#9A9080}
+.l-nempty b{display:block;font-family:Fraunces;font-size:14px;color:#6E6557;margin-bottom:5px;font-weight:600}
+@media(max-width:680px){.l-nav{display:none}.l-npnl{width:300px}}
+@media(max-width:820px){.l-cols{grid-template-columns:1fr}.l-search{display:none}}
+`
+
+let fontInjected = false
+export function LegitStyles() {
+  if (typeof document !== 'undefined' && !fontInjected) {
+    fontInjected = true
+    const l = document.createElement('link')
+    l.rel = 'stylesheet'
+    l.href = 'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap'
+    document.head.appendChild(l)
+  }
+  return <style dangerouslySetInnerHTML={{ __html: CSS }} />
+}
+
+// ── auth (reuses the app's existing AuthModal + useAuth) ──
+type AuthMode = 'signin' | 'signup'
+const LegitAuthCtx = createContext<{ openAuth: (m?: AuthMode) => void; loggedIn: boolean }>({ openAuth: () => {}, loggedIn: false })
+export const useLegitAuth = () => useContext(LegitAuthCtx)
+
+export function LegitShell({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const [mode, setMode] = useState<AuthMode>('signin')
+  const { user, member, signOut } = useAuth() as {
+    user: { id?: string; email?: string } | null
+    member: { display_name?: string; avatar_url?: string | null } | null
+    signOut: () => Promise<void>
+  }
+  const [cats, setCats] = useState<string[]>([])
+  const openAuth = (m: AuthMode = 'signin') => { setMode(m); setOpen(true) }
+  const name = member?.display_name || user?.email?.split('@')[0] || 'You'
+  const initial = name.trim()[0]?.toUpperCase() || '?'
+
+  useEffect(() => {
+    let alive = true
+    supabase.from('listings').select('category').not('category', 'is', null).then(({ data }) => {
+      if (!alive) return
+      const m = new Map<string, number>()
+      for (const r of (data as { category: string }[] | null) || []) m.set(r.category, (m.get(r.category) || 0) + 1)
+      setCats([...m.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => c).slice(0, 12))
+    })
+    return () => { alive = false }
+  }, [])
+
+  return (
+    <LegitAuthCtx.Provider value={{ openAuth, loggedIn: !!user }}>
+      <div className="lgt">
+        <LegitStyles />
+        <header className="l-h">
+          <div className="l-wrap l-hd">
+            <Link to="/v2" className="l-logo"><span className="l-dot" />legit</Link>
+            <nav className="l-nav">
+              <Link to="/v2" className="l-navi">Browse</Link>
+              <CategoriesMenu cats={cats} />
+            </nav>
+            <div className="l-search" onClick={() => document.getElementById('l-hero-search')?.focus()}><SearchIcon size={15} /> Search tested services…</div>
+            <div className="l-auth">
+              {user
+                ? <>
+                    <LegitBell recipientId={user.id || ''} />
+                    <ProfileMenu name={name} email={user.email || ''} initial={initial} avatar={member?.avatar_url || null} onSignOut={signOut} />
+                  </>
+                : <>
+                    <span className="l-login" onClick={() => openAuth('signin')}>Log in</span>
+                    <span className="l-btn" onClick={() => openAuth('signup')}>Sign up — free</span>
+                  </>}
+            </div>
+          </div>
+        </header>
+        {children}
+      </div>
+      <AuthModal open={open} onClose={() => setOpen(false)} initialMode={mode} />
+    </LegitAuthCtx.Provider>
+  )
+}
+
+// click-outside helper
+function useClickAway(onAway: () => void) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) onAway() }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [onAway])
+  return ref
+}
+
+function Chevron() {
+  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+}
+
+function CategoriesMenu({ cats }: { cats: string[] }) {
+  const [open, setOpen] = useState(false)
+  const nav = useNavigate()
+  const ref = useClickAway(() => setOpen(false))
+  const go = (c?: string) => { setOpen(false); nav(c ? `/v2?cat=${encodeURIComponent(c)}` : '/v2') }
+  return (
+    <div className="l-ddwrap" ref={ref}>
+      <span className={`l-navi ${open ? 'on' : ''}`} onClick={() => setOpen(o => !o)}>Categories <Chevron /></span>
+      {open && (
+        <div className="l-dd left">
+          <div className="l-ddi" onClick={() => go()}>All categories</div>
+          {cats.length > 0 && <div className="l-ddsep" />}
+          {cats.map(c => <div key={c} className="l-ddi" onClick={() => go(c)}>{c}</div>)}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ProfileMenu({ name, email, initial, avatar, onSignOut }: { name: string; email: string; initial: string; avatar: string | null; onSignOut: () => Promise<void> }) {
+  const [open, setOpen] = useState(false)
+  const nav = useNavigate()
+  const ref = useClickAway(() => setOpen(false))
+  const go = (to: string) => { setOpen(false); nav(to) }
+  return (
+    <div className="l-ddwrap" ref={ref}>
+      <div className="l-avatar" style={avatar ? { backgroundImage: `url(${avatar})`, backgroundSize: 'cover' } : undefined} onClick={() => setOpen(o => !o)} title={name}>
+        {!avatar && initial}
+      </div>
+      {open && (
+        <div className="l-dd right">
+          <div className="l-ddhead">
+            <div className="l-ddname">{name}</div>
+            {email && <div className="l-ddmail">{email}</div>}
+          </div>
+          <div className="l-ddsep" />
+          <div className="l-ddi" onClick={() => go('/me')}>Profile &amp; settings</div>
+          <div className="l-ddi" onClick={() => go('/me/products')}>My products</div>
+          <div className="l-ddi" onClick={() => go('/library')}>Library</div>
+          <div className="l-ddsep" />
+          <div className="l-ddi" onClick={async () => { setOpen(false); await onSignOut() }}>Sign out</div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function bellTimeAgo(iso: string): string {
+  const s = (Date.now() - new Date(iso).getTime()) / 1000
+  if (s < 60) return 'just now'
+  if (s < 3600) return `${Math.floor(s / 60)}m`
+  if (s < 86400) return `${Math.floor(s / 3600)}h`
+  const d = Math.floor(s / 86400)
+  return d < 30 ? `${d}d` : `${Math.floor(d / 30)}mo`
+}
+
+// amber-styled bell · reuses the real notifications data layer (lib/notifications)
+function LegitBell({ recipientId }: { recipientId: string }) {
+  const nav = useNavigate()
+  const [open, setOpen] = useState(false)
+  const [unread, setUnread] = useState(0)
+  const [rows, setRows] = useState<NotificationRow[] | null>(null)
+  const ref = useClickAway(() => setOpen(false))
+  const openRef = useRef(open)
+  useEffect(() => { openRef.current = open }, [open])
+
+  useEffect(() => {
+    if (!recipientId) return
+    fetchUnreadCount().then(setUnread)
+    const unsub = subscribeNotifications(recipientId, () => {
+      fetchUnreadCount().then(setUnread)
+      if (openRef.current) fetchNotifications(25).then(setRows)
+    })
+    return unsub
+  }, [recipientId])
+
+  useEffect(() => { if (open && rows === null) fetchNotifications(25).then(setRows) }, [open, rows])
+
+  const onRow = async (n: NotificationRow) => {
+    setOpen(false)
+    if (n.kind !== 'ticket_gift' && !n.read_at) {
+      await markRead(n.id)
+      setUnread(c => Math.max(0, c - 1))
+      setRows(prev => prev?.map(r => r.id === n.id ? { ...r, read_at: new Date().toISOString() } : r) ?? prev)
+    }
+    const dest = destinationFor(n)
+    if (dest) nav(dest)
+  }
+  const onMarkAll = async () => {
+    await markAllRead(recipientId)
+    setUnread(0)
+    setRows(prev => prev?.map(r => r.read_at ? r : { ...r, read_at: new Date().toISOString() }) ?? prev)
+  }
+
+  return (
+    <div className="l-ddwrap" ref={ref}>
+      <div className="l-bell" onClick={() => setOpen(o => !o)} aria-label={unread > 0 ? `${unread} unread notifications` : 'Notifications'}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" />
+        </svg>
+        {unread > 0 && <span className="l-belldot">{unread > 99 ? '99+' : unread}</span>}
+      </div>
+      {open && (
+        <div className="l-npnl">
+          <div className="l-nph">
+            <b>Notifications</b>
+            {unread > 0 && <span className="l-nmark" onClick={onMarkAll}>Mark all read</span>}
+          </div>
+          {rows === null
+            ? <div className="l-nempty">Loading…</div>
+            : rows.length === 0
+              ? <div className="l-nempty"><b>Nothing yet</b>When someone applauds your work or forecasts on your project, you&apos;ll see it here.</div>
+              : rows.map(n => {
+                  const av = n.actor_avatar_url
+                  const ini = (n.actor_display_name ?? '?').slice(0, 1).toUpperCase()
+                  return (
+                    <div key={n.id} className={`l-nr ${n.read_at ? '' : 'unread'}`} onClick={() => onRow(n)}>
+                      <div className="l-nav-av" style={av ? { backgroundImage: `url(${av})` } : undefined}>{!av && ini}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="l-nrt">{titleFor(n)}</div>
+                        <div className="l-nrtime">{bellTimeAgo(n.created_at)}</div>
+                      </div>
+                    </div>
+                  )
+                })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function SearchIcon({ size = 17, color = '#9A9080' }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <circle cx="11" cy="11" r="7" /><line x1="20.5" y1="20.5" x2="16.5" y2="16.5" />
+    </svg>
+  )
+}
+
+export function StarRating({ value = 0, count = 0, size = 18 }: { value?: number; count?: number; size?: number }) {
+  const stars = [0, 1, 2, 3, 4].map(i => {
+    const fill = Math.max(0, Math.min(1, value - i)) // 0..1 per star
+    return (
+      <svg key={i} width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink: 0 }}>
+        <defs>
+          <linearGradient id={`lg-star-${i}`}>
+            <stop offset={`${fill * 100}%`} stopColor="#E0A92E" />
+            <stop offset={`${fill * 100}%`} stopColor="#E7DECB" />
+          </linearGradient>
+        </defs>
+        <path d="M12 2.5l2.9 6.2 6.6.9-4.8 4.6 1.2 6.6L12 18.7 6 21.4l1.2-6.6L2.4 9.6l6.6-.9z"
+          fill={`url(#lg-star-${i})`} stroke="#D9C9A0" strokeWidth="0.6" />
+      </svg>
+    )
+  })
+  return (
+    <div className="l-rate">
+      <span className="l-stars">{stars}</span>
+      <span className="l-raten">{count > 0 ? `${value.toFixed(1)} · ${count} review${count === 1 ? '' : 's'}` : 'No ratings yet'}</span>
+    </div>
+  )
+}
+
+// Some sources expose a square app/extension/avatar icon as their og:image
+// (Chrome Web Store, App Store, VS Code marketplace, GitHub avatars). That's a
+// great *icon* but a broken *banner* — detect it so we never stretch it wide.
+export function isIconImage(url: string | null | undefined): boolean {
+  if (!url) return false
+  return (
+    /lh3\.googleusercontent\.com/.test(url) ||      // Chrome Web Store / Play / Google user content
+    /=s\d{2,4}(-|$)/.test(url) ||                     // Google square size param, e.g. =s128-rj
+    /mzstatic\.com/.test(url) ||                      // Apple App Store
+    /gallerycdn\.vsassets\.io/.test(url) ||           // VS Code marketplace
+    /avatars\.githubusercontent\.com/.test(url)       // GitHub org/user avatar (square)
+  )
+}
+
+// Small square tile: prefers the service's real app icon when we have one,
+// then the domain favicon, then the initial letter. A wide OG image would
+// crop and look broken at thumbnail size, so we never use it here.
+export function FaviconTile({ name, domain, icon = null, cls = 'l-ic' }: { name: string; domain: string; icon?: string | null; cls?: string }) {
+  const host = (domain || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '')
+  const fav = host ? `https://www.google.com/s2/favicons?domain=${host}&sz=128` : null
+  const chain = [icon, fav].filter(Boolean) as string[]
+  const [stage, setStage] = useState(0)
+  const src = chain[stage]
+  if (!src) return <div className={cls}>{(name[0] || '?').toUpperCase()}</div>
+  return (
+    <div className={`${cls} l-fav`}>
+      <img src={src} alt="" loading="lazy" decoding="async" onError={() => setStage(s => s + 1)} />
+    </div>
+  )
+}
+
+export function ListingRow({ p }: { p: Listing }) {
+  const oneliner = (p.tagline || p.description || '').slice(0, 180)
+  return (
+    <Link to={`/v2/s/${p.slug}`} className="l-row">
+      <FaviconTile name={p.name} domain={p.domain} icon={isIconImage(p.image_url) ? p.image_url : null} />
+      <div style={{ flex: 1 }}>
+        <div className="l-nm">{p.name} <span className="l-dm">{p.domain}</span></div>
+        <div className="l-ol">{oneliner}</div>
+        <div style={{ marginTop: 6, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {p.category && <span className="l-tag">{p.category}</span>}
+          <span className="l-tag">{p.platform || 'web'}</span>
+          {p.has_pricing && <span className="l-tag">pricing</span>}
+          {p.js_starved && <span className="l-tag warn">deep-probe</span>}
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+export function PremiumCard({ p }: { p: Listing }) {
+  // Only a real wide preview belongs in the 1.91:1 banner — never a square icon.
+  const preview = p.image_url && !isIconImage(p.image_url) ? p.image_url : null
+  return (
+    <Link to={`/v2/s/${p.slug}`} className="l-card">
+      <div className="l-cimg" style={preview ? { backgroundImage: `url(${preview})` } : undefined}>
+        {!preview && (p.name[0] || '?').toUpperCase()}
+      </div>
+      <div className="l-cbody">
+        <div className="l-cn">{p.name}</div>
+        <div className="l-cdm">{p.category || p.platform || p.domain}</div>
+        <div className="l-ct">{p.tagline || p.description}</div>
+      </div>
+    </Link>
+  )
+}
+
+// ── tag reactions — low-friction feedback beside star/text reviews ──
+// signed-in members tap preset tags; each (member,listing,tag) is a toggle.
+// "I use this" is the prominent usage signal; the rest are quality tags.
+const RX_TAGS: { key: string; label: string; warn?: boolean }[] = [
+  { key: 'works_great', label: 'Works great' },
+  { key: 'easy', label: 'Easy to use' },
+  { key: 'fast', label: 'Fast & polished' },
+  { key: 'great_support', label: 'Great support' },
+  { key: 'buggy', label: 'Buggy', warn: true },
+  { key: 'overpriced', label: 'Overpriced', warn: true },
+  { key: 'missing_features', label: 'Missing features', warn: true },
+]
+
+export function ReactionBar({ listingId }: { listingId: string }) {
+  const { openAuth, loggedIn } = useLegitAuth()
+  const { user } = useAuth() as { user: { id?: string } | null }
+  const myId = user?.id || null
+  const [counts, setCounts] = useState<Record<string, number>>({})
+  const [mine, setMine] = useState<Set<string>>(new Set())
+  const [busy, setBusy] = useState<string | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    supabase
+      .from('listing_reactions')
+      .select('reaction, member_id')
+      .eq('listing_id', listingId)
+      .then(({ data }) => {
+        if (!alive) return
+        const c: Record<string, number> = {}
+        const m = new Set<string>()
+        for (const r of (data as { reaction: string; member_id: string }[] | null) || []) {
+          c[r.reaction] = (c[r.reaction] || 0) + 1
+          if (myId && r.member_id === myId) m.add(r.reaction)
+        }
+        setCounts(c); setMine(m)
+      })
+    return () => { alive = false }
+  }, [listingId, myId])
+
+  const toggle = async (key: string) => {
+    if (!loggedIn || !myId) { openAuth('signup'); return }
+    if (busy) return
+    setBusy(key)
+    const had = mine.has(key)
+    // optimistic
+    setMine(prev => { const n = new Set(prev); had ? n.delete(key) : n.add(key); return n })
+    setCounts(prev => ({ ...prev, [key]: Math.max(0, (prev[key] || 0) + (had ? -1 : 1)) }))
+    const q = had
+      ? supabase.from('listing_reactions').delete().eq('listing_id', listingId).eq('member_id', myId).eq('reaction', key)
+      : supabase.from('listing_reactions').insert({ listing_id: listingId, member_id: myId, reaction: key })
+    const { error } = await q
+    if (error) { // rollback
+      setMine(prev => { const n = new Set(prev); had ? n.add(key) : n.delete(key); return n })
+      setCounts(prev => ({ ...prev, [key]: Math.max(0, (prev[key] || 0) + (had ? 1 : -1)) }))
+    }
+    setBusy(null)
+  }
+
+  const uses = counts['uses_it'] || 0
+  return (
+    <div className="l-rx">
+      <div className="l-rxh">Community reactions</div>
+      <div className="l-rxsub">
+        {loggedIn ? 'Tap to share how this holds up for you.' : 'Sign in to react — no review required.'}
+      </div>
+      <div className={`l-rxuse ${mine.has('uses_it') ? 'on' : ''}`} onClick={() => toggle('uses_it')}>
+        {mine.has('uses_it') ? 'You use this' : 'I use this'}
+        {uses > 0 && <span className="c">· {uses}</span>}
+      </div>
+      <div className="l-rxtags">
+        {RX_TAGS.map(t => {
+          const c = counts[t.key] || 0
+          return (
+            <span
+              key={t.key}
+              className={`l-rxt ${t.warn ? 'warn' : ''} ${mine.has(t.key) ? 'on' : ''}`}
+              onClick={() => toggle(t.key)}
+            >
+              {t.label}{c > 0 && <span className="c">{c}</span>}
+            </span>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
