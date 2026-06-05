@@ -55,6 +55,8 @@ const CSS = `
 .l-feedhead{display:flex;align-items:baseline;justify-content:space-between;padding:26px 0 2px;border-bottom:1px solid #E9E2D4;margin-bottom:2px}.l-feedhead h2{font-size:19px}.l-feedhead .c{font-size:12.5px;color:#9A9080;font-family:'JetBrains Mono',monospace}
 .l-prehead{font-size:11.5px;font-family:'JetBrains Mono',monospace;color:#9A9080;letter-spacing:.07em;text-transform:uppercase;padding:26px 0 0}
 .l-premium{display:flex;gap:16px;padding:12px 2px 8px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;-ms-overflow-style:none}.l-premium::-webkit-scrollbar{display:none}.l-premium>a{flex:0 0 300px;scroll-snap-align:start}
+/* PC: let the featured carousel run full viewport width, first card aligned to content */
+@media(min-width:900px){.l-premium{margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw);padding-left:max(24px,calc(50vw - 540px));padding-right:max(24px,calc(50vw - 540px))}.l-premium>a{flex:0 0 340px}}
 .l-card{background:#fff;border:1px solid #E9E2D4;border-radius:14px;cursor:pointer;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 1px 8px rgba(150,110,30,.04);transition:box-shadow .15s,border-color .15s,transform .15s}.l-card:hover{border-color:#E7D4AC;box-shadow:0 10px 28px rgba(150,110,30,.13);transform:translateY(-2px)}
 .l-cimg{width:100%;aspect-ratio:1200/630;background:linear-gradient(135deg,#C99A2E,#A66A18);background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;color:#fff;font-family:Fraunces;font-weight:700;font-size:46px}
 .l-cimg-icon{background:#fff}.l-cardicon{width:88px;height:88px;object-fit:contain;border-radius:19px;background:#fff;border:1px solid #EDE6D8}
