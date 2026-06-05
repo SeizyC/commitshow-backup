@@ -79,7 +79,7 @@ export function DirectoryPage() {
   const featured = useMemo(() =>
     (rows || []).filter(r => r.image_url)
       .sort((a, b) => rankScore(b, stats.get(b.id)) - rankScore(a, stats.get(a.id)))
-      .slice(0, 3),
+      .slice(0, 10),
     [rows, stats])
 
   return (
@@ -101,7 +101,6 @@ export function DirectoryPage() {
           <div className="l-statrow">
             <span><b>{rows ? rows.length : '—'}</b> services</span>
             <span><b>{cats.length}</b> categories</span>
-            <span>benchmarked &amp; reviewed</span>
           </div>
         </div>
       </div>

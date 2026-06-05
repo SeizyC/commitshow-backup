@@ -50,18 +50,18 @@ const CSS = `
 .l-bigsearch input{border:none;outline:none;flex:1;font-size:16px;background:transparent;color:#2C261D;font-family:Inter,sans-serif}
 .lgt input:focus,.lgt input:focus-visible{outline:none!important;box-shadow:none!important}
 .l-statrow{display:flex;gap:22px;justify-content:center;margin-top:22px;font-size:12.5px;color:#9A9080;font-family:'JetBrains Mono',monospace;flex-wrap:wrap}.l-statrow b{color:#211C15}
-.l-cattiles{display:flex;flex-wrap:wrap;gap:8px;padding:24px 0 6px;justify-content:center}
-.l-cattile{font-size:13.5px;color:#6E6557;background:#fff;border:1px solid #E9E2D4;border-radius:999px;padding:8px 16px;cursor:pointer;font-weight:500}.l-cattile:hover{border-color:#E7D4AC;color:#211C15}.l-cattile.on{background:#B5791C;color:#fff;border-color:#B5791C}
+.l-cattiles{display:flex;flex-wrap:nowrap;gap:8px;padding:24px 0 6px;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}.l-cattiles::-webkit-scrollbar{display:none}
+.l-cattile{font-size:13.5px;color:#6E6557;background:#fff;border:1px solid #E9E2D4;border-radius:999px;padding:8px 16px;cursor:pointer;font-weight:500;white-space:nowrap;flex:0 0 auto}.l-cattile:hover{border-color:#E7D4AC;color:#211C15}.l-cattile.on{background:#B5791C;color:#fff;border-color:#B5791C}
 .l-feedhead{display:flex;align-items:baseline;justify-content:space-between;padding:26px 0 2px;border-bottom:1px solid #E9E2D4;margin-bottom:2px}.l-feedhead h2{font-size:19px}.l-feedhead .c{font-size:12.5px;color:#9A9080;font-family:'JetBrains Mono',monospace}
 .l-prehead{font-size:11.5px;font-family:'JetBrains Mono',monospace;color:#9A9080;letter-spacing:.07em;text-transform:uppercase;padding:26px 0 0}
-.l-premium{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;padding:12px 0 4px}
+.l-premium{display:flex;gap:16px;padding:12px 2px 8px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;-ms-overflow-style:none}.l-premium::-webkit-scrollbar{display:none}.l-premium>a{flex:0 0 300px;scroll-snap-align:start}
 .l-card{background:#fff;border:1px solid #E9E2D4;border-radius:14px;cursor:pointer;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 1px 8px rgba(150,110,30,.04);transition:box-shadow .15s,border-color .15s,transform .15s}.l-card:hover{border-color:#E7D4AC;box-shadow:0 10px 28px rgba(150,110,30,.13);transform:translateY(-2px)}
 .l-cimg{width:100%;aspect-ratio:1200/630;background:linear-gradient(135deg,#C99A2E,#A66A18);background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;color:#fff;font-family:Fraunces;font-weight:700;font-size:46px}
 .l-cimg-icon{background:#fff}.l-cardicon{width:88px;height:88px;object-fit:contain;border-radius:19px;background:#fff;border:1px solid #EDE6D8}
+.l-cimgcover{width:100%;height:100%;object-fit:cover;display:block}
 .l-cbody{padding:13px 16px 15px;display:flex;flex-direction:column;gap:4px}
 .l-cn{font-family:Fraunces;font-weight:600;font-size:18px;color:#211C15;line-height:1.15}.l-cdm{font-size:11.5px;color:#9A9080;font-family:'JetBrains Mono',monospace}
 .l-ct{font-size:13px;color:#6E6557;line-height:1.45;margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-@media(max-width:820px){.l-premium{grid-template-columns:1fr}}
 /* tag reactions (detail) */
 .l-rx{border-top:1px solid #E9E2D4;padding:24px 0 0;margin-top:8px}
 .l-rxh{font-size:20px;font-family:Fraunces,Georgia,serif;font-weight:600;color:#211C15;margin-bottom:4px}
@@ -423,18 +423,34 @@ export function ListingRow({ p }: { p: Listing }) {
   )
 }
 
-export function PremiumCard({ p }: { p: Listing }) {
-  // Wide OG preview → full-bleed banner. Square app icon → centered at its
-  // natural size (never stretched). Neither → gradient + initial.
-  const icon = p.image_url && isIconImage(p.image_url) ? p.image_url : null
+// Card visual with a runtime fallback chain: wide OG preview (cover) → app
+// icon / domain favicon (contained) → initial. Using <img> (not a CSS
+// background) means a broken or unrenderable source (dead OG endpoint, an SVG
+// that won't paint) falls through instead of leaving a blank tile.
+function CardVisual({ p }: { p: Listing }) {
+  const icon = isIconImage(p.image_url) ? p.image_url : null
   const preview = p.image_url && !icon ? p.image_url : null
+  const host = (p.domain || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '')
+  const fav = host ? `https://www.google.com/s2/favicons?domain=${host}&sz=128` : null
+  const stages: { src: string; cover: boolean }[] = []
+  if (preview) stages.push({ src: preview, cover: true })
+  if (icon) stages.push({ src: icon, cover: false })
+  if (fav) stages.push({ src: fav, cover: false })
+  const [i, setI] = useState(0)
+  const cur = stages[i]
+  if (!cur) return <div className="l-cimg">{(p.name[0] || '?').toUpperCase()}</div>
+  return (
+    <div className={`l-cimg ${cur.cover ? '' : 'l-cimg-icon'}`}>
+      <img className={cur.cover ? 'l-cimgcover' : 'l-cardicon'} src={cur.src} alt="" loading="lazy"
+        onError={() => setI(n => n + 1)} />
+    </div>
+  )
+}
+
+export function PremiumCard({ p }: { p: Listing }) {
   return (
     <Link to={`/v2/s/${p.slug}`} className="l-card">
-      <div className={`l-cimg ${icon ? 'l-cimg-icon' : ''}`} style={preview ? { backgroundImage: `url(${preview})` } : undefined}>
-        {preview ? null
-          : icon ? <img className="l-cardicon" src={icon} alt="" loading="lazy" onError={e => { e.currentTarget.style.display = 'none' }} />
-          : (p.name[0] || '?').toUpperCase()}
-      </div>
+      <CardVisual p={p} />
       <div className="l-cbody">
         <div className="l-cn">{p.name}</div>
         <div className="l-cdm">{p.category || p.platform || p.domain}</div>
