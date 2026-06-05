@@ -46,8 +46,10 @@ const UA_RSS = 'legit-directory-research/0.1 (by /u/legit_research)'
 const UA_WEB = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36'
 const EXTRACT_MODEL = 'claude-haiku-4-5'
 const COMPOSE_MODEL = 'claude-sonnet-4-6'
-const RICH_CAP = 8       // max Claude enrichments per run (bounds cost/latency)
-const PICK_CAP = 16      // max candidates processed per run
+const ENRICH_HARD_CAP = 16   // latency ceiling on Claude enrichments per run
+const PICK_HARD_CAP = 30     // ceiling on candidates processed per run
+// Reddit `t` window → seconds (HN recency cutoff). null = all-time.
+const WINDOW_SECONDS: Record<string, number | null> = { day: 86400, week: 604800, month: 2592000, year: 31536000, all: null }
 
 const EXTRACT_SCHEMA = {
   type: 'object', additionalProperties: false,
@@ -140,9 +142,10 @@ async function claudeCompose(p: { name: string; url: string; bodyText: string })
 
 type Cand = { postTitle?: string; url: string; domain: string; source: string; prefilled?: boolean; name?: string; oneliner?: string; platform?: string; image?: string; slugBase?: string; meta?: string }
 
-async function discoverReddit(subs: string[]): Promise<Cand[]> {
+async function discoverReddit(subs: string[], win = 'week'): Promise<Cand[]> {
+  const t = ['day', 'week', 'month', 'year', 'all'].includes(win) ? win : 'week'
   const rssAll = await Promise.all(subs.map(sub =>
-    fetchText(`https://www.reddit.com/r/${sub}/top/.rss?t=week&limit=25`, UA_RSS, 12000).then(t => ({ sub, t }))))
+    fetchText(`https://www.reddit.com/r/${sub}/top/.rss?t=${t}&limit=25`, UA_RSS, 12000).then(txt => ({ sub, t: txt }))))
   const out: Cand[] = []
   for (const { sub, t } of rssAll) {
     for (const e of [...t.matchAll(/<entry>([\s\S]*?)<\/entry>/g)].map(m => m[1])) {
@@ -156,8 +159,9 @@ async function discoverReddit(subs: string[]): Promise<Cand[]> {
   }
   return out
 }
-async function discoverHN(): Promise<Cand[]> {
-  const j = await fetchJSON('https://hn.algolia.com/api/v1/search_by_date?tags=show_hn&hitsPerPage=50', UA_RSS, 12000)
+async function discoverHN(cutoff: number | null): Promise<Cand[]> {
+  const flt = cutoff ? `&numericFilters=created_at_i>${cutoff}` : ''
+  const j = await fetchJSON(`https://hn.algolia.com/api/v1/search_by_date?tags=show_hn&hitsPerPage=50${flt}`, UA_RSS, 12000)
   const out: Cand[] = []
   for (const h of ((j && j.hits) || [])) {
     if (!h.url) continue
@@ -166,8 +170,8 @@ async function discoverHN(): Promise<Cand[]> {
   }
   return out
 }
-async function discoverGitHub(q: string): Promise<Cand[]> {
-  const j = await fetchJSON(`https://api.github.com/search/repositories?q=${encodeURIComponent(q)}&sort=stars&order=desc&per_page=15`, 'legit-directory/0.1')
+async function discoverGitHub(q: string, n = 15): Promise<Cand[]> {
+  const j = await fetchJSON(`https://api.github.com/search/repositories?q=${encodeURIComponent(q)}&sort=stars&order=desc&per_page=${Math.min(n, 30)}`, 'legit-directory/0.1')
   const out: Cand[] = []
   for (const r of ((j && j.items) || [])) {
     const hasHome = r.homepage && /^https?:/i.test(r.homepage)
@@ -182,8 +186,8 @@ async function discoverGitHub(q: string): Promise<Cand[]> {
   }
   return out
 }
-async function discoverNpm(q: string): Promise<Cand[]> {
-  const j = await fetchJSON(`https://registry.npmjs.org/-/v1/search?text=${encodeURIComponent(q)}&size=15`, 'legit-directory/0.1')
+async function discoverNpm(q: string, n = 15): Promise<Cand[]> {
+  const j = await fetchJSON(`https://registry.npmjs.org/-/v1/search?text=${encodeURIComponent(q)}&size=${Math.min(n, 30)}`, 'legit-directory/0.1')
   const out: Cand[] = []
   for (const o of ((j && j.objects) || [])) {
     const p = o.package || {}; const links = p.links || {}
@@ -221,24 +225,48 @@ async function upsertListings(rows: any[]) {
   return { ok: true }
 }
 
-async function runIngest(target: string) {
+async function runIngest(target: string, opts: { window?: string; limit?: number } = {}) {
+  const win = ['day', 'week', 'month', 'year', 'all'].includes(opts.window || '') ? opts.window! : 'week'
+  const limit = Math.max(1, Math.min(PICK_HARD_CAP, Number(opts.limit) || 16))
+  const enrichN = Math.min(limit, ENRICH_HARD_CAP)
+  const windowSec = WINDOW_SECONDS[win]
+  const hnCutoff = windowSec == null ? null : Math.floor(Date.now() / 1000) - windowSec
+  // per-source discovery breadth scales loosely with the requested limit
+  const perSource = Math.min(Math.max(limit, 15), 30)
+
+  // Multi-source token parsing:
+  //   hn                  → Show HN          mcp / skills → curated GitHub+npm
+  //   gh:<kw> / npm:<kw>  → keyword search   bare word    → Reddit subreddit
   const parts = String(target || '').split(/[\s,]+/).map(s => s.trim()).filter(Boolean)
   const isHN = (p: string) => /^(hn|showhn|hackernews)$/i.test(p) || /news\.ycombinator/i.test(p)
   const isMCP = (p: string) => /^mcp$/i.test(p)
   const isSkills = (p: string) => /^skills?$/i.test(p)
-  const wantHN = parts.some(isHN), wantMCP = parts.some(isMCP), wantSkills = parts.some(isSkills)
-  const subs = [...new Set(parts.filter(p => !isHN(p) && !isMCP(p) && !isSkills(p))
-    .map(p => { const m = p.match(/reddit\.com\/r\/([A-Za-z0-9_]+)/i) || p.match(/^\/?r\/([A-Za-z0-9_]+)$/i) || p.match(/^([A-Za-z0-9_]+)$/); return m && m[1] })
-    .filter(Boolean) as string[])]
-  if (!subs.length && !wantHN && !wantMCP && !wantSkills) return { error: 'Enter sources — subreddits, "hn", "mcp", or "skills".' }
+  const ghQ: string[] = [], npmQ: string[] = []
+  const subs = new Set<string>()
+  let wantHN = false, wantMCP = false, wantSkills = false
+  for (const p of parts) {
+    const gh = p.match(/^(?:gh|github):(.+)$/i); const np = p.match(/^npm:(.+)$/i)
+    if (isHN(p)) { wantHN = true; continue }
+    if (isMCP(p)) { wantMCP = true; continue }
+    if (isSkills(p)) { wantSkills = true; continue }
+    if (gh) { if (gh[1]) ghQ.push(gh[1]); continue }
+    if (np) { if (np[1]) npmQ.push(np[1]); continue }
+    const m = p.match(/reddit\.com\/r\/([A-Za-z0-9_]+)/i) || p.match(/^\/?r\/([A-Za-z0-9_]+)$/i) || p.match(/^([A-Za-z0-9_]+)$/)
+    if (m) subs.add(m[1])
+  }
+  if (!subs.size && !wantHN && !wantMCP && !wantSkills && !ghQ.length && !npmQ.length)
+    return { error: 'Enter sources — subreddits, "hn", "mcp", "skills", "gh:<keyword>", or "npm:<keyword>".' }
+
   const raw: Cand[] = []
-  if (subs.length) raw.push(...await discoverReddit(subs))
-  if (wantHN) raw.push(...await discoverHN())
-  if (wantMCP) raw.push(...await discoverGitHub('mcp server in:name,description,topics'), ...await discoverNpm('mcp'))
-  if (wantSkills) raw.push(...await discoverGitHub('claude skill in:name,description,topics'))
+  if (subs.size) raw.push(...await discoverReddit([...subs], win))
+  if (wantHN) raw.push(...await discoverHN(hnCutoff))
+  if (wantMCP) raw.push(...await discoverGitHub('mcp server in:name,description,topics', perSource), ...await discoverNpm('mcp', perSource))
+  if (wantSkills) raw.push(...await discoverGitHub('claude skill in:name,description,topics', perSource))
+  for (const q of ghQ) raw.push(...await discoverGitHub(`${q} in:name,description,topics`, perSource))
+  for (const q of npmQ) raw.push(...await discoverNpm(q, perSource))
   const seen = new Set<string>(); const cands: Cand[] = []; let noise = 0
   for (const c of raw) { const key = c.slugBase || c.domain; if (NOISE(c.domain)) { noise++; continue } if (seen.has(key)) continue; seen.add(key); cands.push(c) }
-  const picked = cands.slice(0, PICK_CAP)
+  const picked = cands.slice(0, limit)
   const results = await Promise.all(picked.map(async (c, i) => {
     let name: string, oneliner: string, platform: string, image: string, price = false, starved = false, fullBody = ''
     if (c.prefilled) {
@@ -256,7 +284,7 @@ async function runIngest(target: string) {
       price = ex.price; starved = ex.starved; fullBody = ex.body
     }
     let rich = null, prose = null
-    if (i < RICH_CAP && fullBody && fullBody.length >= 200) {
+    if (i < enrichN && fullBody && fullBody.length >= 200) {
       [rich, prose] = await Promise.all([
         claudeExtract({ name, url: c.url, source: c.source, bodyText: fullBody }),
         claudeCompose({ name, url: c.url, bodyText: fullBody }),
@@ -265,9 +293,13 @@ async function runIngest(target: string) {
     return { slug: slugify(c.slugBase || c.domain), name, oneliner, url: c.url, domain: c.domain, platform, image, price, starved, source: c.source, postTitle: c.postTitle, meta: c.meta || '', rich, prose }
   }))
   const up = await upsertListings(results)
-  const sources = [...subs.map(s => 'r/' + s), ...(wantHN ? ['Show HN'] : []), ...(wantMCP ? ['GitHub·MCP', 'npm·MCP'] : []), ...(wantSkills ? ['GitHub·Skills'] : [])]
+  const sources = [
+    ...[...subs].map(s => 'r/' + s),
+    ...(wantHN ? ['Show HN'] : []), ...(wantMCP ? ['GitHub·MCP', 'npm·MCP'] : []), ...(wantSkills ? ['GitHub·Skills'] : []),
+    ...ghQ.map(q => `gh:${q}`), ...npmQ.map(q => `npm:${q}`),
+  ]
   return {
-    sources, discovered: cands.length, noise, kept: results.length, upsert: up,
+    sources, window: win, limit, enriched_cap: enrichN, discovered: cands.length, noise, kept: results.length, upsert: up,
     items: results.map(r => ({ slug: r.slug, name: r.name, domain: r.domain, category: r.rich?.category || null, enriched: !!(r.rich || r.prose) })),
   }
 }
@@ -298,7 +330,7 @@ Deno.serve(async (req) => {
   try { payload = await req.json() } catch { return json({ error: 'bad json' }, 400) }
   const action = payload.action || 'ingest'
   try {
-    if (action === 'ingest') return json(await runIngest(payload.target || ''))
+    if (action === 'ingest') return json(await runIngest(payload.target || '', { window: payload.window, limit: payload.limit }))
     if (action === 'update') return json(await patchListing(String(payload.id), payload.patch || {}))
     if (action === 'delete') return json(await deleteListing(String(payload.id)))
     return json({ error: 'unknown action' }, 400)

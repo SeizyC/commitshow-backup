@@ -29,6 +29,8 @@ export function DirectoryAdminPage() {
   const [busy, setBusy] = useState<string | null>(null)
   const [out, setOut] = useState<string>('')
   const [custom, setCustom] = useState('')
+  const [win, setWin] = useState('week')   // Reddit/HN recency window
+  const [count, setCount] = useState(16)   // max listings processed per run
   const [edit, setEdit] = useState<{ id: string; category: string } | null>(null)
 
   const loadRows = () => supabase.from('listings').select('*').order('created_at', { ascending: false }).limit(500)
@@ -50,10 +52,10 @@ export function DirectoryAdminPage() {
   }
 
   const runIngest = async (target: string) => {
-    setBusy(target); setOut(`Ingesting: ${target} …`)
-    const r = await callFn({ action: 'ingest', target })
+    setBusy(target); setOut(`Ingesting: ${target} · ${win} · up to ${count} …`)
+    const r = await callFn({ action: 'ingest', target, window: win, limit: count })
     if (r.error) setOut(`❌ ${r.error}`)
-    else setOut(`✅ ${target} · discovered ${r.discovered} · kept ${r.kept}${r.upsert?.error ? ` · upsert: ${r.upsert.error}` : ' · upserted'}`)
+    else setOut(`✅ ${target} · ${r.window} · discovered ${r.discovered} · kept ${r.kept} (enriched ≤${r.enriched_cap})${r.upsert?.error ? ` · upsert: ${r.upsert.error}` : ' · upserted'}`)
     await loadRows(); setBusy(null)
   }
 
@@ -100,6 +102,27 @@ export function DirectoryAdminPage() {
           Ingest from sources and curate listings. Ingest runs Claude server-side and upserts into the public directory.
         </p>
 
+        {/* scope: recency window + count */}
+        <div style={{ fontSize: 12, fontFamily: "'JetBrains Mono',monospace", color: '#9A9080', letterSpacing: '.05em', marginBottom: 8 }}>SCOPE</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'center', marginBottom: 18 }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <span style={{ fontSize: 13, color: '#6E6557' }}>Window</span>
+            {([['day', 'Today'], ['week', 'Week'], ['month', 'Month'], ['year', 'Year'], ['all', 'All time']] as const).map(([k, lbl]) => (
+              <span key={k} className={`l-cattile ${win === k ? 'on' : ''}`} style={{ padding: '5px 11px', fontSize: 13 }} onClick={() => setWin(k)}>{lbl}</span>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <span style={{ fontSize: 13, color: '#6E6557' }}>Max listings</span>
+            <input type="number" min={1} max={30} value={count}
+              onChange={e => setCount(Math.max(1, Math.min(30, Number(e.target.value) || 1)))}
+              style={{ width: 64, border: '1px solid #E0D8C8', borderRadius: 8, padding: '6px 10px', fontSize: 14, fontFamily: "'JetBrains Mono',monospace" }} />
+            <span style={{ fontSize: 12, color: '#9A9080' }}>(≤30 · all get Claude write-up up to 16)</span>
+          </div>
+        </div>
+        <div style={{ fontSize: 11.5, color: '#9A9080', marginBottom: 16 }}>
+          Window applies to Reddit (top of) and Hacker News (posted within). GitHub/npm rank by stars/relevance.
+        </div>
+
         {/* ingest */}
         <div style={{ fontSize: 12, fontFamily: "'JetBrains Mono',monospace", color: '#9A9080', letterSpacing: '.05em', marginBottom: 10 }}>INGEST SOURCES</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
@@ -108,11 +131,13 @@ export function DirectoryAdminPage() {
               onClick={() => runIngest(s.key)}>{busy === s.key ? '⏳ ' : '▶ '}{s.label}</span>
           ))}
         </div>
-        <div style={{ fontSize: 12.5, color: '#9A9080', marginBottom: 6, maxWidth: 540 }}>
-          Custom Reddit subreddits — space-separated names, no <code>r/</code>. Each word is one subreddit (not a keyword search).
+        <div style={{ fontSize: 12.5, color: '#9A9080', marginBottom: 6, maxWidth: 620 }}>
+          Custom sources — space-separated. Mix any: subreddit name (e.g. <code>SideProject</code>) ·{' '}
+          <code>hn</code> · <code>mcp</code> · <code>skills</code> · <code>gh:&lt;keyword&gt;</code> (GitHub search) ·{' '}
+          <code>npm:&lt;keyword&gt;</code> (npm search).
         </div>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 14, maxWidth: 540 }}>
-          <input value={custom} onChange={e => setCustom(e.target.value)} placeholder="e.g. SideProject indiehackers webdev"
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14, maxWidth: 620 }}>
+          <input value={custom} onChange={e => setCustom(e.target.value)} placeholder="e.g. SideProject indiehackers gh:analytics npm:scheduler hn"
             autoComplete="off" style={{ flex: 1, border: '1px solid #E0D8C8', borderRadius: 8, padding: '9px 12px', fontSize: 14, fontFamily: 'Inter' }} />
           <span className="l-btn ghost" style={{ opacity: busy || !custom.trim() ? 0.5 : 1, pointerEvents: busy || !custom.trim() ? 'none' : 'auto' }}
             onClick={() => runIngest(custom.trim())}>Run</span>
