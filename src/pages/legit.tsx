@@ -57,6 +57,7 @@ const CSS = `
 .l-premium{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;padding:12px 0 4px}
 .l-card{background:#fff;border:1px solid #E9E2D4;border-radius:14px;cursor:pointer;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 1px 8px rgba(150,110,30,.04);transition:box-shadow .15s,border-color .15s,transform .15s}.l-card:hover{border-color:#E7D4AC;box-shadow:0 10px 28px rgba(150,110,30,.13);transform:translateY(-2px)}
 .l-cimg{width:100%;aspect-ratio:1200/630;background:linear-gradient(135deg,#C99A2E,#A66A18);background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;color:#fff;font-family:Fraunces;font-weight:700;font-size:46px}
+.l-cimg-icon{background:#fff}.l-cardicon{width:88px;height:88px;object-fit:contain;border-radius:19px;background:#fff;border:1px solid #EDE6D8}
 .l-cbody{padding:13px 16px 15px;display:flex;flex-direction:column;gap:4px}
 .l-cn{font-family:Fraunces;font-weight:600;font-size:18px;color:#211C15;line-height:1.15}.l-cdm{font-size:11.5px;color:#9A9080;font-family:'JetBrains Mono',monospace}
 .l-ct{font-size:13px;color:#6E6557;line-height:1.45;margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -140,7 +141,7 @@ export function LegitShell({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<AuthMode>('signin')
   const { user, member, signOut } = useAuth() as {
     user: { id?: string; email?: string } | null
-    member: { display_name?: string; avatar_url?: string | null } | null
+    member: { display_name?: string; avatar_url?: string | null; is_admin?: boolean } | null
     signOut: () => Promise<void>
   }
   const [cats, setCats] = useState<string[]>([])
@@ -170,12 +171,11 @@ export function LegitShell({ children }: { children: ReactNode }) {
               <Link to="/v2" className="l-navi">Browse</Link>
               <CategoriesMenu cats={cats} />
             </nav>
-            <div className="l-search" onClick={() => document.getElementById('l-hero-search')?.focus()}><SearchIcon size={15} /> Search tested services…</div>
-            <div className="l-auth">
+            <div className="l-auth" style={{ marginLeft: 'auto' }}>
               {user
                 ? <>
                     <LegitBell recipientId={user.id || ''} />
-                    <ProfileMenu name={name} email={user.email || ''} initial={initial} avatar={member?.avatar_url || null} onSignOut={signOut} />
+                    <ProfileMenu name={name} email={user.email || ''} initial={initial} avatar={member?.avatar_url || null} isAdmin={!!member?.is_admin} onSignOut={signOut} />
                   </>
                 : <>
                     <span className="l-login" onClick={() => openAuth('signin')}>Log in</span>
@@ -225,7 +225,7 @@ function CategoriesMenu({ cats }: { cats: string[] }) {
   )
 }
 
-function ProfileMenu({ name, email, initial, avatar, onSignOut }: { name: string; email: string; initial: string; avatar: string | null; onSignOut: () => Promise<void> }) {
+function ProfileMenu({ name, email, initial, avatar, isAdmin, onSignOut }: { name: string; email: string; initial: string; avatar: string | null; isAdmin: boolean; onSignOut: () => Promise<void> }) {
   const [open, setOpen] = useState(false)
   const nav = useNavigate()
   const ref = useClickAway(() => setOpen(false))
@@ -245,6 +245,10 @@ function ProfileMenu({ name, email, initial, avatar, onSignOut }: { name: string
           <div className="l-ddi" onClick={() => go('/me')}>Profile &amp; settings</div>
           <div className="l-ddi" onClick={() => go('/me/products')}>My products</div>
           <div className="l-ddi" onClick={() => go('/library')}>Library</div>
+          {isAdmin && <>
+            <div className="l-ddsep" />
+            <div className="l-ddi" style={{ color: '#97600F', fontWeight: 600 }} onClick={() => go('/v2/admin')}>Directory admin</div>
+          </>}
           <div className="l-ddsep" />
           <div className="l-ddi" onClick={async () => { setOpen(false); await onSignOut() }}>Sign out</div>
         </div>
@@ -420,12 +424,16 @@ export function ListingRow({ p }: { p: Listing }) {
 }
 
 export function PremiumCard({ p }: { p: Listing }) {
-  // Only a real wide preview belongs in the 1.91:1 banner — never a square icon.
-  const preview = p.image_url && !isIconImage(p.image_url) ? p.image_url : null
+  // Wide OG preview → full-bleed banner. Square app icon → centered at its
+  // natural size (never stretched). Neither → gradient + initial.
+  const icon = p.image_url && isIconImage(p.image_url) ? p.image_url : null
+  const preview = p.image_url && !icon ? p.image_url : null
   return (
     <Link to={`/v2/s/${p.slug}`} className="l-card">
-      <div className="l-cimg" style={preview ? { backgroundImage: `url(${preview})` } : undefined}>
-        {!preview && (p.name[0] || '?').toUpperCase()}
+      <div className={`l-cimg ${icon ? 'l-cimg-icon' : ''}`} style={preview ? { backgroundImage: `url(${preview})` } : undefined}>
+        {preview ? null
+          : icon ? <img className="l-cardicon" src={icon} alt="" loading="lazy" onError={e => { e.currentTarget.style.display = 'none' }} />
+          : (p.name[0] || '?').toUpperCase()}
       </div>
       <div className="l-cbody">
         <div className="l-cn">{p.name}</div>

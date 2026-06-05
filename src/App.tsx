@@ -57,6 +57,7 @@ const PitchKPage              = lazy(() => import('./pages/PitchKPage').then(m =
 const CheckPage               = lazy(() => import('./pages/CheckPage').then(m => ({ default: m.CheckPage })))
 const DirectoryPage           = lazy(() => import('./pages/DirectoryPage').then(m => ({ default: m.DirectoryPage })))
 const ListingDetailPage       = lazy(() => import('./pages/ListingDetailPage').then(m => ({ default: m.ListingDetailPage })))
+const DirectoryAdminPage      = lazy(() => import('./pages/DirectoryAdminPage').then(m => ({ default: m.DirectoryAdminPage })))
 
 // Suspense fallback — faint monospace ping that stays out of the way while
 // a chunk downloads. No spinner · matches the Ivy League restraint.
@@ -148,6 +149,7 @@ export default function App() {
           <Route path="/check"            element={<CheckPage />} />
           <Route path="/v2"               element={<DirectoryPage />} />
           <Route path="/v2/s/:slug"       element={<ListingDetailPage />} />
+          <Route path="/v2/admin"         element={<DirectoryAdminPage />} />
           <Route path="/admin"            element={<AdminPage />} />
           <Route path="/admin/cmo"        element={<CmoPreviewPage />} />
           <Route path="/admin/emails"     element={<AdminEmailsPage />} />

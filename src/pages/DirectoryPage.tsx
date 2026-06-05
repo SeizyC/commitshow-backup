@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { isIconImage, LegitShell, ListingRow, PremiumCard, SearchIcon, type Listing } from './legit'
+import { LegitShell, ListingRow, PremiumCard, SearchIcon, type Listing } from './legit'
 
 type Stats = { uses_count: number; positive_count: number; negative_count: number }
 
@@ -77,7 +77,7 @@ export function DirectoryPage() {
   }, [rows, q, cat, stats])
 
   const featured = useMemo(() =>
-    (rows || []).filter(r => r.image_url && !isIconImage(r.image_url))
+    (rows || []).filter(r => r.image_url)
       .sort((a, b) => rankScore(b, stats.get(b.id)) - rankScore(a, stats.get(a.id)))
       .slice(0, 3),
     [rows, stats])
