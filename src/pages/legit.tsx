@@ -20,6 +20,12 @@ export type Listing = {
   image_url: string | null; icon_url: string | null; source: string | null; meta: string | null
   has_pricing: boolean; js_starved: boolean
   info_as_of: string | null; created_at: string
+  benchmark: Benchmark | null
+}
+
+export type Benchmark = {
+  quality: number; trust: number; activity: number; transparency: number
+  overall: number; form: string; scored_at?: string; signals?: Record<string, unknown>
 }
 
 const CSS = `
@@ -108,6 +114,14 @@ const CSS = `
 .l-note{font-size:12px;color:#9A9080;font-style:italic}
 .l-facts{background:#fff;border:1px solid #E9E2D4;border-radius:12px;padding:6px 16px}.l-f{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #E9E2D4;font-size:13.5px}.l-f:last-child{border-bottom:none}.l-k{color:#6E6557}.l-v{font-weight:500;text-align:right}
 .l-lab{background:#F4F0E8;border:1px solid #E9E2D4;border-radius:14px;padding:18px;font-family:'JetBrains Mono',monospace;text-align:center}.l-lh{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:#97600F;font-weight:600;text-align:left}
+.l-bm{text-align:left;margin-top:10px}
+.l-bmtop{display:flex;align-items:baseline;gap:2px;justify-content:center}.l-bmscore{font-family:Fraunces,Georgia,serif;font-weight:700;font-size:42px;color:#211C15;line-height:1}.l-bmscoremax{font-size:14px;color:#9A9080}
+.l-bmsrc{text-align:center;font-size:10.5px;color:#9A9080;letter-spacing:.04em;margin:4px 0 15px}
+.l-bmbars{display:flex;flex-direction:column;gap:10px}
+.l-bmrow{display:grid;grid-template-columns:78px 1fr 26px;align-items:center;gap:9px}
+.l-bmlabel{font-family:Inter,sans-serif;font-size:12px;color:#6E6557}
+.l-bmtrack{height:7px;background:#E4DCCB;border-radius:4px;overflow:hidden}.l-bmfill{display:block;height:100%;background:linear-gradient(90deg,#C99A2E,#B5791C);border-radius:4px;transition:width .4s}
+.l-bmval{font-size:12px;color:#211C15;text-align:right;font-weight:600}
 .l-lockt{font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#211C15;margin-top:14px}.l-locksub{font-family:Inter,sans-serif;font-size:11.5px;color:#6E6557;max-width:230px;margin:6px auto 10px}
 .l-engage{display:flex;align-items:center;justify-content:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px}
 .l-vouchbtn{display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid #E9E2D4;border-radius:999px;padding:8px 15px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:700;transition:.12s;flex-shrink:0}.l-vouchbtn:hover{border-color:#E7D4AC}.l-vouchbtn.on{background:#FCF6E9}
@@ -136,6 +150,7 @@ const CSS = `
 .l-fav{background:#fff;border:1px solid #EDE6D8}.l-fav img{width:100%;height:100%;object-fit:cover}
 .l-nm{font-weight:600;color:#211C15;font-size:19px;font-family:Fraunces,Georgia,serif;line-height:1.2}.l-dm{font-size:12.5px;color:#9A9080;font-family:'JetBrains Mono',monospace;font-weight:400}.l-ol{font-size:15px;color:#5A5347;margin-top:5px;line-height:1.55;max-width:680px}
 .l-tag{font-size:11px;font-family:'JetBrains Mono',monospace;padding:3px 9px;border-radius:5px;background:#F4F0E8;color:#6E6557;border:1px solid #E9E2D4}.l-tag.warn{background:#FBEFD9;color:#97600F;border-color:#E7D4AC}
+.l-score{font-size:11.5px;font-family:'JetBrains Mono',monospace;font-weight:700;padding:3px 9px;border-radius:5px;background:#F6EBD4;color:#97600F;border:1px solid #E7D4AC}
 /* header nav + dropdowns + bell */
 .l-nav{display:flex;align-items:center;gap:4px}
 .l-navi{font-size:14px;font-weight:500;color:#6E6557;padding:7px 11px;border-radius:7px;cursor:pointer;display:inline-flex;align-items:center;gap:5px}.l-navi:hover{background:#F1EADE;color:#211C15}.l-navi.on{color:#211C15;background:#F1EADE}
@@ -686,6 +701,31 @@ export function isIconImage(url: string | null | undefined): boolean {
   )
 }
 
+// 4-axis benchmark chart — same axes for every form, so listings compare on one
+// objective chart. Source badge says which signals fed it.
+const BM_AXES: [keyof Benchmark, string][] = [['quality', 'Quality'], ['trust', 'Trust'], ['activity', 'Activity'], ['transparency', 'Transparency']]
+const BM_FORM: Record<string, string> = { web: 'live site', app_store: 'App Store signals', github: 'GitHub signals', npm: 'npm signals' }
+export function BenchmarkChart({ b }: { b: Benchmark }) {
+  return (
+    <div className="l-bm">
+      <div className="l-bmtop"><span className="l-bmscore">{b.overall}</span><span className="l-bmscoremax">/100</span></div>
+      <div className="l-bmsrc">evaluated on {BM_FORM[b.form] || b.form}</div>
+      <div className="l-bmbars">
+        {BM_AXES.map(([k, label]) => {
+          const v = (b[k] as number) || 0
+          return (
+            <div key={k} className="l-bmrow">
+              <span className="l-bmlabel">{label}</span>
+              <span className="l-bmtrack"><span className="l-bmfill" style={{ width: `${v}%` }} /></span>
+              <span className="l-bmval">{v}</span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // Resolve a listing's two visuals: a square `icon` (for the small thumbnail)
 // and a wide `preview` (for cards/detail banners). icon_url is the explicit
 // app icon column; legacy rows may carry an icon-type image_url instead.
@@ -721,6 +761,7 @@ export function ListingRow({ p, tickets = 0 }: { p: Listing; tickets?: number })
         <div className="l-nm">{p.name} <span className="l-dm">{p.domain}</span></div>
         <div className="l-ol">{oneliner}</div>
         <div style={{ marginTop: 6, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          {p.benchmark && <span className="l-score">◆ {p.benchmark.overall}</span>}
           {tickets > 0 && <TicketBadge count={tickets} />}
           {p.category && <span className="l-tag">{p.category}</span>}
           <span className="l-tag">{p.platform || 'web'}</span>

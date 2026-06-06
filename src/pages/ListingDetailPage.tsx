@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { FaviconTile, LegitShell, LegitVouch, RatingPanel, ReactionBar, StarRating, TicketBadge, ticketTier, useLegitAuth, visuals, type Listing } from './legit'
+import { BenchmarkChart, FaviconTile, LegitShell, LegitVouch, RatingPanel, ReactionBar, StarRating, TicketBadge, ticketTier, useLegitAuth, visuals, type Listing } from './legit'
 
 export function ListingDetailPage() {
   const { slug } = useParams<{ slug: string }>()
@@ -37,7 +37,7 @@ export function ListingDetailPage() {
 }
 
 function Detail({ p }: { p: Listing }) {
-  const { openAuth, loggedIn } = useLegitAuth()
+  const { openAuth } = useLegitAuth()
   const dt = (p.info_as_of || '').slice(0, 10)
   const whoFor = p.who_for || []
   const features = p.features || []
@@ -116,12 +116,15 @@ function Detail({ p }: { p: Listing }) {
         <aside>
           <div className="l-lab">
             <div className="l-lh">◆ legit benchmark</div>
-            <svg className="l-lockic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9A9080" strokeWidth="1.7">
-              <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
-            <div className="l-lockt">{loggedIn ? 'Benchmark coming soon' : 'Sign in to run the benchmark'}</div>
-            <div className="l-locksub">Objective, reproducible measurements — performance, security, reliability.</div>
-            {!loggedIn && <span className="l-btn" onClick={() => openAuth('signup')}>Sign in — it&apos;s free</span>}
+            {p.benchmark
+              ? <BenchmarkChart b={p.benchmark} />
+              : <>
+                  <svg className="l-lockic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9A9080" strokeWidth="1.7">
+                    <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                  <div className="l-lockt">Benchmark pending</div>
+                  <div className="l-locksub">Objective, reproducible measurements — quality, trust, activity, transparency.</div>
+                </>}
           </div>
           <div className="l-facts" style={{ marginTop: 16 }}>
             <div className="l-f"><span className="l-k">Platform</span><span className="l-v">{p.platform || 'Web'}</span></div>
