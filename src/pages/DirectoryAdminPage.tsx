@@ -173,6 +173,7 @@ export function DirectoryAdminPage() {
                       <span className="l-login" onClick={() => setEdit(null)}>cancel</span>
                     </>
                   : <>
+                      {l.benchmark && <span className="l-score" title="overall benchmark (admin only)">◆ {l.benchmark.overall}</span>}
                       <span className="l-tag" style={{ background: l.category ? '#F6EBD4' : '#FBEFD9', color: '#97600F', borderColor: '#E7D4AC' }}>
                         {l.category || 'no category'}
                       </span>

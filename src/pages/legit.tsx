@@ -708,8 +708,7 @@ const BM_FORM: Record<string, string> = { web: 'live site', app_store: 'App Stor
 export function BenchmarkChart({ b }: { b: Benchmark }) {
   return (
     <div className="l-bm">
-      <div className="l-bmtop"><span className="l-bmscore">{b.overall}</span><span className="l-bmscoremax">/100</span></div>
-      <div className="l-bmsrc">evaluated on {BM_FORM[b.form] || b.form}</div>
+      <div className="l-bmsrc" style={{ textAlign: 'left', margin: '4px 0 13px' }}>evaluated on {BM_FORM[b.form] || b.form}</div>
       <div className="l-bmbars">
         {BM_AXES.map(([k, label]) => {
           const v = (b[k] as number) || 0
@@ -761,7 +760,6 @@ export function ListingRow({ p, tickets = 0 }: { p: Listing; tickets?: number })
         <div className="l-nm">{p.name} <span className="l-dm">{p.domain}</span></div>
         <div className="l-ol">{oneliner}</div>
         <div style={{ marginTop: 6, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          {p.benchmark && <span className="l-score">◆ {p.benchmark.overall}</span>}
           {tickets > 0 && <TicketBadge count={tickets} />}
           {p.category && <span className="l-tag">{p.category}</span>}
           <span className="l-tag">{p.platform || 'web'}</span>
