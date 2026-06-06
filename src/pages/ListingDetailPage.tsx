@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { FaviconTile, LegitShell, ReactionBar, StarRating, TicketPanel, ticketTier, useLegitAuth, visuals, type Listing } from './legit'
+import { FaviconTile, LegitShell, RatingPanel, ReactionBar, StarRating, TicketPanel, ticketTier, useLegitAuth, visuals, type Listing } from './legit'
 
 export function ListingDetailPage() {
   const { slug } = useParams<{ slug: string }>()
@@ -43,11 +43,16 @@ function Detail({ p }: { p: Listing }) {
   const features = p.features || []
   const { icon: vIcon, preview: vPreview } = visuals(p)
   const [ticketCount, setTicketCount] = useState(0)
+  const [rating, setRatingStats] = useState<{ avg: number; count: number }>({ avg: 0, count: 0 })
   useEffect(() => {
     let alive = true
     supabase.from('listing_ticket_stats').select('ticket_count').eq('listing_id', p.id).maybeSingle()
       .then(({ data }) => { if (alive) setTicketCount((data as { ticket_count: number } | null)?.ticket_count || 0) })
-    return () => { alive = false }
+    const loadRating = () => supabase.from('listing_rating_stats').select('avg_rating, rating_count').eq('listing_id', p.id).maybeSingle()
+      .then(({ data }) => { if (!alive) return; const d = data as { avg_rating: number; rating_count: number } | null; setRatingStats({ avg: d?.avg_rating || 0, count: d?.rating_count || 0 }) })
+    loadRating()
+    window.addEventListener('legit:rating', loadRating)
+    return () => { alive = false; window.removeEventListener('legit:rating', loadRating) }
   }, [p.id])
   const starTone = ticketTier(ticketCount).tone
   return (
@@ -60,7 +65,7 @@ function Detail({ p }: { p: Listing }) {
         <FaviconTile name={p.name} domain={p.domain} icon={vIcon} cls="l-ico" />
         <div>
           <h1 style={{ fontSize: 32, lineHeight: 1.1 }}>{p.name}</h1>
-          <StarRating value={0} count={0} tone={starTone} />
+          <StarRating value={rating.avg} count={rating.count} tone={starTone} />
           <div className="l-one">{p.tagline || p.description}</div>
           <div className="l-pills">
             <span className="l-pill plat">{p.platform || 'web'}</span>
@@ -70,8 +75,8 @@ function Detail({ p }: { p: Listing }) {
         </div>
         <div className="l-heroact">
           <a className="l-btn" href={p.url} target="_blank" rel="noopener noreferrer">Visit site ↗</a>
-          <span className="l-btn ghost" onClick={() => openAuth('signup')}>Is this yours? Claim</span>
-          <div className="l-prov">Info as of {dt}<br />from {p.domain}</div>
+          <span className="l-claim" onClick={() => openAuth('signup')}>Is this yours? Claim it</span>
+          <div className="l-prov">Info as of {dt} · from {p.domain}</div>
         </div>
       </div>
 
@@ -130,10 +135,10 @@ function Detail({ p }: { p: Listing }) {
       <ReactionBar listingId={p.id} />
 
       <div className="l-reviews">
-        <h2 style={{ marginBottom: 10 }}>Reviews</h2>
+        <h2 style={{ marginBottom: 12 }}>Ratings &amp; reviews</h2>
+        <RatingPanel listingId={p.id} tone={starTone} />
         <div className="l-empty">
-          <b>No reviews yet.</b> The page is already useful from the structured info and (signed-in) benchmark.{' '}
-          {loggedIn ? 'Be the first to review.' : <span style={{ color: '#97600F', cursor: 'pointer' }} onClick={() => openAuth('signup')}>Sign in to be the first.</span>}
+          <b>Written reviews are coming.</b> For now your star rating and a legit ticket are the fastest way to weigh in.
         </div>
       </div>
 

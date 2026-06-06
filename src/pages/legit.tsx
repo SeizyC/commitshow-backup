@@ -95,7 +95,10 @@ const CSS = `
 .l-ico{width:60px;height:60px;border-radius:14px;background:linear-gradient(135deg,#C99A2E,#A66A18);color:#fff;font-family:Fraunces;font-weight:700;font-size:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background-size:cover;background-position:center}
 .l-one{font-size:17px;color:#6E6557;margin:7px 0 12px;max-width:600px}
 .l-pills{display:flex;flex-wrap:wrap;gap:7px}.l-pill{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#6E6557;background:#F4F0E8;border:1px solid #E9E2D4;border-radius:999px;padding:3px 10px}.l-pill.plat{color:#97600F;background:#F6EBD4;border-color:#E7D4AC}
-.l-heroact{margin-left:auto;display:flex;flex-direction:column;gap:9px;align-items:flex-end;flex-shrink:0}.l-prov{font-size:12px;color:#9A9080;text-align:right}
+.l-heroact{margin-left:auto;display:flex;flex-direction:column;gap:9px;align-items:stretch;flex-shrink:0;min-width:172px}.l-heroact .l-btn{text-align:center}
+.l-claim{font-size:12.5px;color:#97600F;cursor:pointer;text-align:center}.l-claim:hover{text-decoration:underline}
+.l-prov{font-size:11.5px;color:#9A9080;text-align:center;line-height:1.5;margin-top:2px}
+@media(max-width:680px){.l-hero{flex-wrap:wrap}.l-heroact{margin-left:0;width:100%;min-width:0}}
 .l-cols{display:grid;grid-template-columns:1fr 320px;gap:40px;padding:30px 0 10px}
 .l-blk{margin-bottom:28px}.l-blk h2{font-size:20px;margin-bottom:10px}.l-lead{color:#2C261D}
 .l-iconblk{display:flex;align-items:center;justify-content:center;background:#F4F0E8;border:1px solid #E9E2D4;border-radius:12px;padding:38px}
@@ -106,6 +109,11 @@ const CSS = `
 .l-facts{background:#fff;border:1px solid #E9E2D4;border-radius:12px;padding:6px 16px}.l-f{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #E9E2D4;font-size:13.5px}.l-f:last-child{border-bottom:none}.l-k{color:#6E6557}.l-v{font-weight:500;text-align:right}
 .l-lab{background:#F4F0E8;border:1px solid #E9E2D4;border-radius:14px;padding:18px;font-family:'JetBrains Mono',monospace;text-align:center}.l-lh{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:#97600F;font-weight:600;text-align:left}
 .l-lockt{font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#211C15;margin-top:14px}.l-locksub{font-family:Inter,sans-serif;font-size:11.5px;color:#6E6557;max-width:230px;margin:6px auto 10px}
+.l-rateset{display:flex;align-items:center;gap:13px;flex-wrap:wrap;margin-bottom:14px}
+.l-rateset-l{font-size:14px;color:#6E6557;font-weight:500}
+.l-rateset-stars{display:inline-flex;gap:3px}
+.l-starbtn{background:none;border:none;padding:0;cursor:pointer;line-height:0;display:inline-flex}.l-starbtn:hover{transform:scale(1.08)}
+.l-rateset-c{font-size:12.5px;color:#9A9080;font-family:'JetBrains Mono',monospace}
 .l-reviews{border-top:1px solid #E9E2D4;padding:26px 0 0;margin-top:8px}.l-empty{font-size:13px;color:#6E6557;background:#F4F0E8;border:1px dashed #E9E2D4;border-radius:10px;padding:16px}
 .l-foot{border-top:1px solid #E9E2D4;margin-top:36px;padding:22px 0 50px;font-size:12.5px;color:#9A9080}
 .l-row{display:flex;gap:18px;align-items:flex-start;padding:20px 4px;border-bottom:1px solid #E9E2D4;cursor:pointer;border-radius:10px;transition:background .12s}.l-row:hover{background:#fff}
@@ -122,6 +130,7 @@ const CSS = `
 .l-ddi{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:8px;font-size:14px;color:#2C261D;cursor:pointer;white-space:nowrap}.l-ddi:hover{background:#F4F0E8}.l-ddi .s{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#9A9080}
 .l-ddsep{height:1px;background:#E9E2D4;margin:6px 8px}
 .l-ddhead{padding:11px 11px 7px}.l-ddname{font-weight:600;font-size:14.5px;color:#211C15}.l-ddmail{font-size:12px;color:#9A9080;margin-top:1px;overflow:hidden;text-overflow:ellipsis}
+.l-ddtk{padding:9px 11px}.l-ddtk-h{display:flex;align-items:center;gap:7px;font-size:13.5px;color:#2C261D;font-weight:500}.l-ddtk-s{display:block;font-size:12px;color:#9A9080;font-family:'JetBrains Mono',monospace;margin-top:4px;margin-left:21px}
 .l-bell{position:relative;width:36px;height:36px;border-radius:9px;border:1px solid #E9E2D4;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6E6557}.l-bell:hover{border-color:#E7D4AC;color:#211C15}
 .l-belldot{position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;padding:0 4px;background:#C8102E;color:#fff;border:2px solid #FAF8F3;border-radius:9px;font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace;display:flex;align-items:center;justify-content:center}
 .l-npnl{position:absolute;top:calc(100% + 8px);right:0;width:340px;max-height:72vh;overflow-y:auto;background:#fff;border:1px solid #E9E2D4;border-radius:12px;box-shadow:0 14px 38px rgba(60,45,20,.18);z-index:40}
@@ -191,7 +200,7 @@ export function LegitShell({ children }: { children: ReactNode }) {
               {user
                 ? <>
                     <LegitBell recipientId={user.id || ''} />
-                    <ProfileMenu name={name} email={user.email || ''} initial={initial} avatar={member?.avatar_url || null} isAdmin={!!member?.is_admin} onSignOut={() => signOut('/v2')} />
+                    <ProfileMenu name={name} email={user.email || ''} initial={initial} avatar={member?.avatar_url || null} isAdmin={!!member?.is_admin} memberId={user.id || ''} onSignOut={() => signOut('/v2')} />
                   </>
                 : <>
                     <span className="l-login" onClick={() => openAuth('signin')}>Log in</span>
@@ -241,11 +250,25 @@ function CategoriesMenu({ cats }: { cats: string[] }) {
   )
 }
 
-function ProfileMenu({ name, email, initial, avatar, isAdmin, onSignOut }: { name: string; email: string; initial: string; avatar: string | null; isAdmin: boolean; onSignOut: () => Promise<void> }) {
+function ProfileMenu({ name, email, initial, avatar, isAdmin, memberId, onSignOut }: { name: string; email: string; initial: string; avatar: string | null; isAdmin: boolean; memberId: string; onSignOut: () => Promise<void> }) {
   const [open, setOpen] = useState(false)
+  const [used, setUsed] = useState(0)
   const nav = useNavigate()
   const ref = useClickAway(() => setOpen(false))
   const go = (to: string) => { setOpen(false); nav(to) }
+
+  useEffect(() => {
+    if (!open || !memberId) return
+    const load = () => {
+      const d = new Date(); const monthStart = new Date(d.getFullYear(), d.getMonth(), 1).toISOString()
+      supabase.from('listing_tickets').select('listing_id', { count: 'exact', head: true }).eq('member_id', memberId).gte('created_at', monthStart)
+        .then(({ count }) => setUsed(count || 0))
+    }
+    load()
+    window.addEventListener('legit:tickets', load)
+    return () => window.removeEventListener('legit:tickets', load)
+  }, [open, memberId])
+
   return (
     <div className="l-ddwrap" ref={ref}>
       <div className="l-avatar" style={avatar ? { backgroundImage: `url(${avatar})`, backgroundSize: 'cover' } : undefined} onClick={() => setOpen(o => !o)} title={name}>
@@ -256,6 +279,11 @@ function ProfileMenu({ name, email, initial, avatar, isAdmin, onSignOut }: { nam
           <div className="l-ddhead">
             <div className="l-ddname">{name}</div>
             {email && <div className="l-ddmail">{email}</div>}
+          </div>
+          <div className="l-ddsep" />
+          <div className="l-ddtk">
+            <span className="l-ddtk-h"><LegitSeal size={14} color="#B5791C" /> Legit tickets</span>
+            <span className="l-ddtk-s">{Math.max(0, TICKET_QUOTA - used)} of {TICKET_QUOTA} left this month</span>
           </div>
           <div className="l-ddsep" />
           <div className="l-ddi" onClick={() => go('/me')}>Profile &amp; settings</div>
@@ -391,6 +419,58 @@ export function StarRating({ value = 0, count = 0, size = 18, tone = '#E0A92E' }
   )
 }
 
+// Interactive star rating — click 1-5 to rate (re-click your score to clear).
+// Aggregates feed the hero StarRating; tone follows the legit-ticket tier.
+export function RatingPanel({ listingId, tone = '#E0A92E' }: { listingId: string; tone?: string }) {
+  const { openAuth, loggedIn } = useLegitAuth()
+  const { user } = useAuth() as { user: { id?: string } | null }
+  const myId = user?.id || null
+  const [mine, setMine] = useState(0)
+  const [hover, setHover] = useState(0)
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    let alive = true
+    if (myId) supabase.from('listing_ratings').select('rating').eq('listing_id', listingId).eq('member_id', myId).maybeSingle()
+      .then(({ data }) => { if (alive) setMine((data as { rating: number } | null)?.rating || 0) })
+    return () => { alive = false }
+  }, [listingId, myId])
+
+  const set = async (r: number) => {
+    if (!loggedIn || !myId) { openAuth('signup'); return }
+    if (busy) return
+    setBusy(true)
+    const prev = mine
+    const next = r === mine ? 0 : r
+    setMine(next)
+    const q = next === 0
+      ? supabase.from('listing_ratings').delete().eq('listing_id', listingId).eq('member_id', myId)
+      : supabase.from('listing_ratings').upsert({ listing_id: listingId, member_id: myId, rating: next, updated_at: new Date().toISOString() }, { onConflict: 'listing_id,member_id' })
+    const { error } = await q
+    if (error) setMine(prev)
+    else window.dispatchEvent(new Event('legit:rating'))
+    setBusy(false)
+  }
+
+  const shown = hover || mine
+  return (
+    <div className="l-rateset">
+      <span className="l-rateset-l">{mine ? 'Your rating' : 'Rate this'}</span>
+      <span className="l-rateset-stars" onMouseLeave={() => setHover(0)}>
+        {[1, 2, 3, 4, 5].map(n => (
+          <button key={n} className="l-starbtn" onMouseEnter={() => setHover(n)} onClick={() => set(n)} aria-label={`${n} star${n > 1 ? 's' : ''}`}>
+            <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 2.5l2.9 6.2 6.6.9-4.8 4.6 1.2 6.6L12 18.7 6 21.4l1.2-6.6L2.4 9.6l6.6-.9z"
+                fill={n <= shown ? tone : '#EFE7D6'} stroke={tone} strokeOpacity="0.5" strokeWidth="0.7" />
+            </svg>
+          </button>
+        ))}
+      </span>
+      {!loggedIn && <span className="l-rateset-c">sign in to rate</span>}
+    </div>
+  )
+}
+
 // ── Legit tickets — the heavy, scarce, specialty-tagged vouch ──
 export const SPECIALTIES: { key: string; label: string }[] = [
   { key: 'reliable', label: 'Reliable' },
@@ -443,7 +523,6 @@ export function TicketPanel({ listingId }: { listingId: string }) {
   const [count, setCount] = useState(0)
   const [specs, setSpecs] = useState<Record<string, number>>({})
   const [mine, setMine] = useState<string | null>(null)
-  const [used, setUsed] = useState(0)
   const [picking, setPicking] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
@@ -455,16 +534,12 @@ export function TicketPanel({ listingId }: { listingId: string }) {
     if (myId) {
       supabase.from('listing_tickets').select('specialty').eq('listing_id', listingId).eq('member_id', myId).maybeSingle()
         .then(({ data }) => { if (alive) setMine((data as { specialty: string } | null)?.specialty ?? null) })
-      const d = new Date(); const monthStart = new Date(d.getFullYear(), d.getMonth(), 1).toISOString()
-      supabase.from('listing_tickets').select('listing_id', { count: 'exact', head: true }).eq('member_id', myId).gte('created_at', monthStart)
-        .then(({ count: c }) => { if (alive) setUsed(c || 0) })
     }
     return () => { alive = false }
   }, [listingId, myId])
 
   const tier = ticketTier(count)
   const top = Object.entries(specs).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k]) => SPECIALTY_LABEL[k] || k)
-  const remaining = Math.max(0, TICKET_QUOTA - used)
 
   const throwTicket = async (specialty: string) => {
     if (!loggedIn || !myId) { openAuth('signup'); return }
@@ -479,8 +554,9 @@ export function TicketPanel({ listingId }: { listingId: string }) {
       setMsg(/quota/i.test(error.message) ? `You've used all ${TICKET_QUOTA} legit tickets this month.` : 'Could not throw the ticket — try again.')
     } else {
       setSpecs(prev => { const n = { ...prev }; if (had && mine) n[mine] = Math.max(0, (n[mine] || 1) - 1); n[specialty] = (n[specialty] || 0) + 1; return n })
-      if (!had) { setCount(c => c + 1); setUsed(u => u + 1) }
+      if (!had) setCount(c => c + 1)
       setMine(specialty); setPicking(false)
+      window.dispatchEvent(new Event('legit:tickets'))   // refresh the profile-menu counter
     }
     setBusy(false)
   }
@@ -488,7 +564,7 @@ export function TicketPanel({ listingId }: { listingId: string }) {
     if (!myId || busy) return
     setBusy(true); setMsg('')
     const { error } = await supabase.from('listing_tickets').delete().eq('listing_id', listingId).eq('member_id', myId)
-    if (!error) { setSpecs(prev => { const n = { ...prev }; if (mine) n[mine] = Math.max(0, (n[mine] || 1) - 1); return n }); setCount(c => Math.max(0, c - 1)); setMine(null); setPicking(false) }
+    if (!error) { setSpecs(prev => { const n = { ...prev }; if (mine) n[mine] = Math.max(0, (n[mine] || 1) - 1); return n }); setCount(c => Math.max(0, c - 1)); setMine(null); setPicking(false); window.dispatchEvent(new Event('legit:tickets')) }
     setBusy(false)
   }
 
@@ -511,18 +587,18 @@ export function TicketPanel({ listingId }: { listingId: string }) {
             )}
             {(mine || picking) && (
               <>
-                <div className="l-tksub" style={{ marginBottom: 8 }}>{mine ? 'Your vouch — tap another to change it' : 'What does this product nail?'}</div>
+                {!mine && <div className="l-tksub" style={{ marginBottom: 8 }}>What does this product nail?</div>}
                 <div className="l-tkchips">
                   {SPECIALTIES.map(s => (
-                    <span key={s.key} className={`l-tkchip ${mine === s.key ? 'on' : ''}`} onClick={() => throwTicket(s.key)}>
+                    <span key={s.key} className={`l-tkchip ${mine === s.key ? 'on' : ''}`}
+                      onClick={() => mine === s.key ? takeBack() : throwTicket(s.key)}>
                       {mine === s.key && <LegitSeal size={13} color={tier.tone} />}{s.label}
                     </span>
                   ))}
                 </div>
-                {mine && <div style={{ marginTop: 10 }}><span className="l-login" style={{ color: '#C8102E' }} onClick={takeBack}>take back ticket</span></div>}
               </>
             )}
-            <div className="l-tkquota">{remaining} of {TICKET_QUOTA} legit tickets left this month{msg ? ` · ${msg}` : ''}</div>
+            {msg && <div className="l-tkquota" style={{ color: '#C8102E' }}>{msg}</div>}
           </>}
     </div>
   )
