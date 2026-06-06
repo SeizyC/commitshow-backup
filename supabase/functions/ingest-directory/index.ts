@@ -90,6 +90,17 @@ function guessPlatform(url: string): string {
   return 'Web'
 }
 
+// App Store / Play Store pages expose only the app icon as og:image, but their
+// HTML carries the actual phone screenshots (portrait mzstatic / Google-play
+// images). A screenshot is a far better preview than the tiny icon.
+function pickStoreScreenshot(html: string): string | null {
+  const shots = [...html.matchAll(/https:\/\/[a-z0-9-]+\.mzstatic\.com\/image\/thumb\/[^"'\s)]+?\/(\d+)x(\d+)(?:bb|wa)\.(?:png|jpe?g|webp)/gi)]
+    .map(m => ({ u: m[0], w: +m[1], h: +m[2] }))
+    .filter(s => !/AppIcon|Placeholder/i.test(s.u) && s.h > s.w * 1.3) // portrait screenshots, not the icon
+  if (!shots.length) return null
+  return shots[0].u.replace(/\/\d+x\d+(?:bb|wa)\./, '/600x1300bb.') // crisp, uniform size
+}
+
 async function extractLanding(url: string) {
   const html = await fetchText(url, UA_WEB, 9000)
   const pick = (re: RegExp) => { const m = html.match(re); return m ? m[1].trim().replace(/\s+/g, ' ') : '' }
@@ -99,6 +110,7 @@ async function extractLanding(url: string) {
   let image = pick(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)/i)
     || pick(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)/i)
     || pick(/<link[^>]+rel=["']apple-touch-icon["'][^>]+href=["']([^"']+)/i)
+  if (/apps\.apple\.com/i.test(url)) { const shot = pickStoreScreenshot(html); if (shot) image = shot }
   if (image && !/^https?:\/\//.test(image)) { try { image = new URL(image, url).href } catch { image = '' } }
   const body = html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ')
     .replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim()

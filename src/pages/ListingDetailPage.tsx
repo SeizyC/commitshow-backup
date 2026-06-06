@@ -75,7 +75,7 @@ function Detail({ p }: { p: Listing }) {
                     onError={(e) => { const el = e.currentTarget.parentElement; if (el) el.style.display = 'none' }} />
                 </div>
               : <div className="l-blk">
-                  <img src={p.image_url} alt="" style={{ width: '100%', borderRadius: 12, border: '1px solid #E9E2D4', display: 'block' }}
+                  <img src={p.image_url} alt="" style={{ width: '100%', maxHeight: 560, objectFit: 'contain', borderRadius: 12, border: '1px solid #E9E2D4', display: 'block', background: '#F4F0E8' }}
                     onError={(e) => { const el = e.currentTarget.parentElement; if (el) el.style.display = 'none' }} />
                 </div>
           )}

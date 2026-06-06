@@ -53,7 +53,7 @@ const CSS = `
 .l-cattiles{display:flex;flex-wrap:nowrap;gap:8px;padding:24px 0 6px;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}.l-cattiles::-webkit-scrollbar{display:none}
 .l-cattile{font-size:13.5px;color:#6E6557;background:#fff;border:1px solid #E9E2D4;border-radius:999px;padding:8px 16px;cursor:pointer;font-weight:500;white-space:nowrap;flex:0 0 auto}.l-cattile:hover{border-color:#E7D4AC;color:#211C15}.l-cattile.on{background:#B5791C;color:#fff;border-color:#B5791C}
 .l-catwrap{position:relative}
-.l-catfade{position:absolute;top:24px;right:0;bottom:6px;width:60px;pointer-events:none;background:linear-gradient(90deg,rgba(250,248,243,0) 0%,#FAF8F3 80%)}
+.l-catfade{position:absolute;top:24px;right:0;bottom:6px;width:56px;pointer-events:none;background:linear-gradient(90deg,rgba(250,248,243,0) 0%,rgba(250,248,243,.18) 60%,rgba(250,248,243,.42) 100%)}
 .l-feedhead{display:flex;align-items:baseline;justify-content:space-between;padding:26px 0 2px;border-bottom:1px solid #E9E2D4;margin-bottom:2px}.l-feedhead h2{font-size:19px}.l-feedhead .c{font-size:12.5px;color:#9A9080;font-family:'JetBrains Mono',monospace}
 .l-prehead{font-size:11.5px;font-family:'JetBrains Mono',monospace;color:#9A9080;letter-spacing:.07em;text-transform:uppercase;padding:26px 0 0}
 .l-premium{display:flex;gap:16px;padding:12px 2px 8px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;-ms-overflow-style:none}.l-premium::-webkit-scrollbar{display:none}.l-premium>a{flex:0 0 300px;scroll-snap-align:start}
@@ -385,7 +385,7 @@ export function isIconImage(url: string | null | undefined): boolean {
   return (
     /lh3\.googleusercontent\.com/.test(url) ||      // Chrome Web Store / Play / Google user content
     /=s\d{2,4}(-|$)/.test(url) ||                     // Google square size param, e.g. =s128-rj
-    /mzstatic\.com/.test(url) ||                      // Apple App Store
+    (/mzstatic\.com/.test(url) && /AppIcon/i.test(url)) || // Apple App Store icon (screenshots are previews)
     /gallerycdn\.vsassets\.io/.test(url) ||           // VS Code marketplace
     /avatars\.githubusercontent\.com/.test(url)       // GitHub org/user avatar (square)
   )
