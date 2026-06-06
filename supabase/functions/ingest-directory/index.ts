@@ -25,6 +25,7 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const SR_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
 const ADMIN_TOKEN = Deno.env.get('ADMIN_TOKEN') ?? ''
+const SR = { apikey: SR_KEY, authorization: `Bearer ${SR_KEY}` }
 
 // Two ways in: the shared x-admin-token (used by the main /admin console + CLI),
 // or a signed-in member whose JWT resolves to members.is_admin = true (so the
@@ -68,6 +69,34 @@ const COMPOSE_SCHEMA = {
 
 const dec = (x: string) => (x || '').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#39;/g, "'").replace(/&#x27;/g, "'")
 const slugify = (d: string) => d.toLowerCase().replace(/^www\./, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 44)
+
+// ── canonical entity resolver (cross-run / cross-source dedup) ──
+// Multi-tenant hosts: the registrable unit is the full subdomain (foo.github.io,
+// not github.io). Keep this list in sync with the backfill script.
+const MULTI_TENANT = ['github.io', 'gitlab.io', 'vercel.app', 'netlify.app', 'pages.dev', 'web.app', 'firebaseapp.com', 'herokuapp.com', 'fly.dev', 'onrender.com', 'repl.co', 'replit.app', 'glitch.me', 'surge.sh', 'workers.dev', 'deno.dev', 'railway.app', 'streamlit.app', 'gumroad.com', 'notion.site', 'webflow.io', 'framer.website', 'super.site', 'carrd.co', 'bubbleapps.io']
+const SECOND_LEVEL = ['co.uk', 'com.au', 'co.kr', 'co.jp', 'co.nz', 'com.br', 'co.in', 'org.uk']
+function registrable(host: string): string {
+  host = host.replace(/^www\./, '').toLowerCase()
+  for (const mt of MULTI_TENANT) {
+    if (host === mt) return host
+    if (host.endsWith('.' + mt)) { const sub = host.slice(0, -(mt.length + 1)).split('.').pop(); return `${sub}.${mt}` }
+  }
+  const parts = host.split('.')
+  if (parts.length > 2 && SECOND_LEVEL.includes(parts.slice(-2).join('.'))) return parts.slice(-3).join('.')
+  return parts.slice(-2).join('.')
+}
+function canonicalKey(rawUrl: string): string {
+  try {
+    const u = new URL(/^https?:\/\//.test(rawUrl) ? rawUrl : `https://${rawUrl}`)
+    const host = u.host.toLowerCase()
+    if (/apps\.apple\.com/.test(host)) { const m = u.pathname.match(/\/id(\d+)/); return m ? `appstore:${m[1]}` : `web:${registrable(host)}` }
+    if (/play\.google\.com/.test(host)) { const id = u.searchParams.get('id'); return id ? `play:${id}` : `web:${registrable(host)}` }
+    if (/(^|\.)github\.com$/.test(host)) { const m = u.pathname.match(/^\/([^/]+)\/([^/]+)/); return m ? `github:${m[1].toLowerCase()}/${m[2].toLowerCase().replace(/\.git$/, '')}` : 'web:github.com' }
+    if (/(^|\.)npmjs\.com$/.test(host)) { const m = u.pathname.match(/package\/(.+)$/); return m ? `npm:${decodeURIComponent(m[1].replace(/\/$/, ''))}` : 'web:npmjs.com' }
+    if (/chromewebstore\.google\.com|chrome\.google\.com/.test(host)) { const m = u.pathname.match(/\/detail\/[^/]+\/([a-z]{20,})/i); return m ? `chrome:${m[1].toLowerCase()}` : `web:${registrable(host)}` }
+    return `web:${registrable(host)}`
+  } catch { return `web:${(rawUrl || '').toLowerCase().slice(0, 80)}` }
+}
 
 async function fetchText(url: string, ua: string, ms = 12000): Promise<string> {
   const c = new AbortController(); const t = setTimeout(() => c.abort(), ms)
@@ -234,6 +263,42 @@ async function discoverNpm(q: string, n = 15): Promise<Cand[]> {
   return out
 }
 
+// Aggregator feeds (Product Hunt, BetaList, dev.to) link to their OWN post page,
+// not the product. Resolve the dominant external link on the post page = the
+// product's real site.
+function resolveOutbound(html: string, selfHost: string): string | null {
+  const count = new Map<string, { url: string; n: number }>()
+  for (const m of html.matchAll(/href=["'](https?:\/\/[^"']+)["']/gi)) {
+    try {
+      const u = new URL(m[1]); const host = u.host.toLowerCase()
+      if (host.includes(selfHost) || NOISE(host)) continue
+      if (/\.(png|jpe?g|svg|gif|webp|css|js|ico|woff2?|mp4)($|\?)/i.test(u.pathname)) continue
+      if (/google|gstatic|cloudflare|cdn|fonts|gravatar|amazonaws|cloudfront|googletagmanager|sentry|segment|intercom|stripe\.com\/v|js\./.test(host)) continue
+      const reg = registrable(host)
+      const cur = count.get(reg) || { url: `${u.protocol}//${host}`, n: 0 }
+      cur.n++; count.set(reg, cur)
+    } catch { /* skip */ }
+  }
+  if (!count.size) return null
+  return [...count.values()].sort((a, b) => b.n - a.n)[0].url
+}
+async function discoverRssResolve(feedUrl: string, source: string, selfHost: string, n: number): Promise<Cand[]> {
+  const xml = await fetchText(feedUrl, UA_RSS, 12000)
+  const items = [...xml.matchAll(/<(?:item|entry)>([\s\S]*?)<\/(?:item|entry)>/gi)].map(m => m[1]).slice(0, Math.min(n, 25))
+  const out: Cand[] = []
+  await Promise.all(items.map(async it => {
+    const title = dec((it.match(/<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/) || [])[1] || '').replace(/<[^>]+>/g, '').trim()
+    const link = (it.match(/<link[^>]*>(?:<!\[CDATA\[)?\s*(https?:\/\/[^<\]\s]+)/i) || it.match(/<link[^>]*href=["'](https?:\/\/[^"']+)/i) || [])[1]
+    if (!link) return
+    const page = await fetchText(link, UA_WEB, 9000)
+    const product = resolveOutbound(page, selfHost)
+    if (!product) return
+    const domain = product.replace(/^https?:\/\/(www\.)?/i, '').split('/')[0].toLowerCase()
+    out.push({ postTitle: title, url: product, domain, source })
+  }))
+  return out.filter(c => c.url && !NOISE(c.domain))
+}
+
 async function upsertListings(rows: any[]) {
   if (!SUPABASE_URL || !SR_KEY || !rows.length) return { error: 'no rows / config' }
   const payload = rows.map(L => ({
@@ -245,6 +310,7 @@ async function upsertListings(rows: any[]) {
     pricing: (L.rich && L.rich.pricing) || '', how_to_use: (L.rich && L.rich.how_to_use) || '',
     image_url: L.image || null, icon_url: L.icon || null, source: L.source || null, source_post_title: L.postTitle || null, meta: L.meta || null,
     has_pricing: !!L.price, js_starved: !!L.starved, enriched: !!(L.rich || L.prose),
+    canonical_key: L.ckey || null,
     last_fetched_at: new Date().toISOString(),
   }))
   const r = await fetch(`${SUPABASE_URL}/rest/v1/listings?on_conflict=slug`, {
@@ -272,33 +338,59 @@ async function runIngest(target: string, opts: { window?: string; limit?: number
   const isHN = (p: string) => /^(hn|showhn|hackernews)$/i.test(p) || /news\.ycombinator/i.test(p)
   const isMCP = (p: string) => /^mcp$/i.test(p)
   const isSkills = (p: string) => /^skills?$/i.test(p)
+  const isPH = (p: string) => /^(ph|producthunt)$/i.test(p)
+  const isBeta = (p: string) => /^betalist$/i.test(p)
+  const isDevto = (p: string) => /^devto$/i.test(p)
   const ghQ: string[] = [], npmQ: string[] = []
   const subs = new Set<string>()
-  let wantHN = false, wantMCP = false, wantSkills = false
+  let wantHN = false, wantMCP = false, wantSkills = false, wantPH = false, wantBeta = false, wantDevto = false
   for (const p of parts) {
     const gh = p.match(/^(?:gh|github):(.+)$/i); const np = p.match(/^npm:(.+)$/i)
     if (isHN(p)) { wantHN = true; continue }
     if (isMCP(p)) { wantMCP = true; continue }
     if (isSkills(p)) { wantSkills = true; continue }
+    if (isPH(p)) { wantPH = true; continue }
+    if (isBeta(p)) { wantBeta = true; continue }
+    if (isDevto(p)) { wantDevto = true; continue }
     if (gh) { if (gh[1]) ghQ.push(gh[1]); continue }
     if (np) { if (np[1]) npmQ.push(np[1]); continue }
     const m = p.match(/reddit\.com\/r\/([A-Za-z0-9_]+)/i) || p.match(/^\/?r\/([A-Za-z0-9_]+)$/i) || p.match(/^([A-Za-z0-9_]+)$/)
     if (m) subs.add(m[1])
   }
-  if (!subs.size && !wantHN && !wantMCP && !wantSkills && !ghQ.length && !npmQ.length)
-    return { error: 'Enter sources — subreddits, "hn", "mcp", "skills", "gh:<keyword>", or "npm:<keyword>".' }
+  if (!subs.size && !wantHN && !wantMCP && !wantSkills && !wantPH && !wantBeta && !wantDevto && !ghQ.length && !npmQ.length)
+    return { error: 'Enter sources — subreddits, "hn", "mcp", "skills", "ph", "betalist", "devto", "gh:<keyword>", or "npm:<keyword>".' }
 
   const raw: Cand[] = []
   if (subs.size) raw.push(...await discoverReddit([...subs], win))
   if (wantHN) raw.push(...await discoverHN(hnCutoff))
   if (wantMCP) raw.push(...await discoverGitHub('mcp server in:name,description,topics', perSource), ...await discoverNpm('mcp', perSource))
   if (wantSkills) raw.push(...await discoverGitHub('claude skill in:name,description,topics', perSource))
+  if (wantPH) raw.push(...await discoverRssResolve('https://www.producthunt.com/feed', 'Product Hunt', 'producthunt.com', perSource))
+  if (wantBeta) raw.push(...await discoverRssResolve('https://betalist.com/feed', 'BetaList', 'betalist.com', perSource))
+  if (wantDevto) raw.push(...await discoverRssResolve('https://dev.to/feed/tag/showdev', 'dev.to', 'dev.to', perSource))
   for (const q of ghQ) raw.push(...await discoverGitHub(`${q} in:name,description,topics`, perSource))
   for (const q of npmQ) raw.push(...await discoverNpm(q, perSource))
-  const seen = new Set<string>(); const cands: Cand[] = []; let noise = 0
-  for (const c of raw) { const key = c.slugBase || c.domain; if (NOISE(c.domain)) { noise++; continue } if (seen.has(key)) continue; seen.add(key); cands.push(c) }
-  const picked = cands.slice(0, limit)
-  const results = await Promise.all(picked.map(async (c, i) => {
+  // dedup within this run by canonical key (not just domain)
+  const seen = new Set<string>(); const cands: (Cand & { ckey: string })[] = []; let noise = 0
+  for (const c of raw) {
+    if (NOISE(c.domain)) { noise++; continue }
+    const ckey = canonicalKey(c.url)
+    if (seen.has(ckey)) continue
+    seen.add(ckey); cands.push({ ...c, ckey })
+  }
+  // cross-run / cross-source dedup: skip products already in the directory
+  const known = new Set<string>()
+  if (cands.length && SUPABASE_URL && SR_KEY) {
+    try {
+      const inList = cands.map(c => encodeURIComponent(`"${c.ckey}"`)).join(',')
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/listings?select=canonical_key&canonical_key=in.(${inList})`, { headers: SR })
+      if (r.ok) for (const row of (await r.json()) as { canonical_key: string }[]) if (row.canonical_key) known.add(row.canonical_key)
+    } catch { /* best effort — worst case we re-upsert (slug merge) */ }
+  }
+  const fresh = cands.filter(c => !known.has(c.ckey))
+  const dupes = cands.length - fresh.length
+  const picked = fresh.slice(0, limit)
+  const resultsRaw = await Promise.all(picked.map(async (c, i) => {
     let name: string, oneliner: string, platform: string, image = '', icon = '', price = false, starved = false, fullBody = ''
     if (c.prefilled) {
       name = c.name || c.domain; oneliner = c.oneliner || c.postTitle || ''; platform = c.platform || 'Web'
@@ -317,6 +409,14 @@ async function runIngest(target: string, opts: { window?: string; limit?: number
       image = ex.image; icon = ex.icon
       price = ex.price; starved = ex.starved; fullBody = ex.body
     }
+    // ── Part 2: spam/junk gate (website candidates; API-sourced github/npm are trusted) ──
+    if (!c.prefilled) {
+      const probe = `${name} ${fullBody.slice(0, 500)}`
+      const junk = !fullBody || fullBody.length < 120
+        || /(this domain (is |may be )?for sale|buy this domain|domain (is )?parked|parked (free|domain|by)|account suspended|site (is )?under construction|page not found|404 (not found|error)|error 404|website (is )?expired|godaddy|sedo\.com|hugedomains|default web page)/i.test(probe)
+      if (junk) return null
+    }
+    // ── enrich gate: only substantial pages within the per-run cap hit the LLM ──
     let rich = null, prose = null
     if (i < enrichN && fullBody && fullBody.length >= 200) {
       [rich, prose] = await Promise.all([
@@ -324,16 +424,19 @@ async function runIngest(target: string, opts: { window?: string; limit?: number
         claudeCompose({ name, url: c.url, bodyText: fullBody }),
       ])
     }
-    return { slug: slugify(c.slugBase || c.domain), name, oneliner, url: c.url, domain: c.domain, platform, image, icon, price, starved, source: c.source, postTitle: c.postTitle, meta: c.meta || '', rich, prose }
+    return { slug: slugify(c.slugBase || c.domain), name, oneliner, url: c.url, domain: c.domain, platform, image, icon, price, starved, source: c.source, postTitle: c.postTitle, meta: c.meta || '', rich, prose, ckey: c.ckey }
   }))
+  const results = resultsRaw.filter(Boolean) as NonNullable<typeof resultsRaw[number]>[]
   const up = await upsertListings(results)
   const sources = [
     ...[...subs].map(s => 'r/' + s),
     ...(wantHN ? ['Show HN'] : []), ...(wantMCP ? ['GitHub·MCP', 'npm·MCP'] : []), ...(wantSkills ? ['GitHub·Skills'] : []),
+    ...(wantPH ? ['Product Hunt'] : []), ...(wantBeta ? ['BetaList'] : []), ...(wantDevto ? ['dev.to'] : []),
     ...ghQ.map(q => `gh:${q}`), ...npmQ.map(q => `npm:${q}`),
   ]
   return {
-    sources, window: win, limit, enriched_cap: enrichN, discovered: cands.length, noise, kept: results.length, upsert: up,
+    sources, window: win, limit, enriched_cap: enrichN,
+    discovered: cands.length, noise, already_in_directory: dupes, gated_out: picked.length - results.length, kept: results.length, upsert: up,
     items: results.map(r => ({ slug: r.slug, name: r.name, domain: r.domain, category: r.rich?.category || null, enriched: !!(r.rich || r.prose) })),
   }
 }
