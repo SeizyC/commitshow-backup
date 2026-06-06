@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { LegitShell, ListingRow, PremiumCard, SearchIcon, type Listing } from './legit'
@@ -82,6 +82,20 @@ export function DirectoryPage() {
       .slice(0, 10),
     [rows, stats])
 
+  // right-edge fade on the category row — shown only while there's more to
+  // scroll, hidden once scrolled to the end.
+  const catRef = useRef<HTMLDivElement>(null)
+  const [catFade, setCatFade] = useState(false)
+  useEffect(() => {
+    const el = catRef.current
+    if (!el) return
+    const update = () => setCatFade(el.scrollWidth - el.clientWidth - el.scrollLeft > 8)
+    update()
+    el.addEventListener('scroll', update, { passive: true })
+    window.addEventListener('resize', update)
+    return () => { el.removeEventListener('scroll', update); window.removeEventListener('resize', update) }
+  }, [cats])
+
   return (
     <LegitShell>
       <div className="l-herobig">
@@ -113,11 +127,14 @@ export function DirectoryPage() {
           </>
         )}
         {cats.length > 0 && (
-          <div className="l-cattiles">
-            <span className={`l-cattile ${!cat ? 'on' : ''}`} onClick={() => setCat(null)}>All</span>
-            {cats.slice(0, 14).map(c => (
-              <span key={c} className={`l-cattile ${cat === c ? 'on' : ''}`} onClick={() => setCat(cat === c ? null : c)}>{c}</span>
-            ))}
+          <div className="l-catwrap">
+            <div className="l-cattiles" ref={catRef}>
+              <span className={`l-cattile ${!cat ? 'on' : ''}`} onClick={() => setCat(null)}>All</span>
+              {cats.map(c => (
+                <span key={c} className={`l-cattile ${cat === c ? 'on' : ''}`} onClick={() => setCat(cat === c ? null : c)}>{c}</span>
+              ))}
+            </div>
+            {catFade && <span className="l-catfade" />}
           </div>
         )}
 
