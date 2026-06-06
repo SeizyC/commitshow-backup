@@ -120,7 +120,7 @@ const CSS = `
 .l-bmbars{display:flex;flex-direction:column;gap:10px}
 .l-bmrow{display:grid;grid-template-columns:78px 1fr 26px;align-items:center;gap:9px}
 .l-bmlabel{font-family:Inter,sans-serif;font-size:12px;color:#6E6557}
-.l-bmtrack{height:7px;background:#E4DCCB;border-radius:4px;overflow:hidden}.l-bmfill{display:block;height:100%;background:linear-gradient(90deg,#C99A2E,#B5791C);border-radius:4px;transition:width .4s}
+.l-bmtrack{height:7px;background:#E4DCCB;border-radius:4px;overflow:hidden}.l-bmfill{display:block;height:100%;border-radius:4px;transition:width .4s}
 .l-bmval{font-size:12px;color:#211C15;text-align:right;font-weight:600}
 .l-lockt{font-family:Inter,sans-serif;font-size:14px;font-weight:600;color:#211C15;margin-top:14px}.l-locksub{font-family:Inter,sans-serif;font-size:11.5px;color:#6E6557;max-width:230px;margin:6px auto 10px}
 .l-engage{display:flex;align-items:center;justify-content:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px}
@@ -703,19 +703,25 @@ export function isIconImage(url: string | null | undefined): boolean {
 
 // 4-axis benchmark chart — same axes for every form, so listings compare on one
 // objective chart. Source badge says which signals fed it.
-const BM_AXES: [keyof Benchmark, string][] = [['quality', 'Quality'], ['trust', 'Trust'], ['activity', 'Activity'], ['transparency', 'Transparency']]
+// Each axis gets its own warm earth tone — slightly different per the design guide.
+const BM_AXES: [keyof Benchmark, string, string][] = [
+  ['quality', 'Quality', '#C99A2E'],        // gold
+  ['trust', 'Trust', '#A8743A'],            // bronze
+  ['activity', 'Activity', '#C2683E'],      // terracotta
+  ['transparency', 'Transparency', '#7E8A4E'], // olive
+]
 const BM_FORM: Record<string, string> = { web: 'live site', app_store: 'App Store signals', github: 'GitHub signals', npm: 'npm signals' }
 export function BenchmarkChart({ b }: { b: Benchmark }) {
   return (
     <div className="l-bm">
       <div className="l-bmsrc" style={{ textAlign: 'left', margin: '4px 0 13px' }}>evaluated on {BM_FORM[b.form] || b.form}</div>
       <div className="l-bmbars">
-        {BM_AXES.map(([k, label]) => {
+        {BM_AXES.map(([k, label, color]) => {
           const v = (b[k] as number) || 0
           return (
             <div key={k} className="l-bmrow">
               <span className="l-bmlabel">{label}</span>
-              <span className="l-bmtrack"><span className="l-bmfill" style={{ width: `${v}%` }} /></span>
+              <span className="l-bmtrack"><span className="l-bmfill" style={{ width: `${v}%`, background: color }} /></span>
               <span className="l-bmval">{v}</span>
             </div>
           )
