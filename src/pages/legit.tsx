@@ -35,8 +35,8 @@ const CSS = `
 .l-wrap{max-width:1080px;margin:0 auto;padding:0 24px}
 .l-h{position:sticky;top:0;background:rgba(250,248,243,.92);backdrop-filter:blur(8px);border-bottom:1px solid #E9E2D4;z-index:20}
 .l-hd{display:flex;align-items:center;gap:18px;height:60px}
-.l-logo{font-family:Fraunces;font-weight:700;font-size:23px;color:#B5791C;display:flex;align-items:center}
-.lgt a.l-logo,.lgt a.l-logo:hover{color:#B5791C}
+.l-logo{font-family:Fraunces;font-weight:700;font-size:23px;color:#8A5A12;display:flex;align-items:center}
+.lgt a.l-logo,.lgt a.l-logo:hover{color:#8A5A12}
 .l-logoowl{height:28px;width:auto;margin-right:7px;flex-shrink:0;object-fit:contain}
 .l-logoshow{color:#B5791C}
 .l-dot{width:9px;height:9px;border-radius:50%;background:#B5791C;display:inline-block}
