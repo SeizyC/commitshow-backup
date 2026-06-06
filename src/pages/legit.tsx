@@ -28,12 +28,12 @@ export type Benchmark = {
 }
 
 const CSS = `
-.lgt{min-height:100vh;background:#FAF8F3;color:#2C261D;font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.lgt{min-height:100vh;background:#FAF8F3;color:#2C261D;font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;padding-top:60px}
 .lgt a{color:inherit;text-decoration:none}
 .lgt h1,.lgt h2,.lgt h3{font-family:Fraunces,Georgia,serif;font-weight:600;letter-spacing:-.01em;color:#211C15;margin:0}
 .lgt img{max-width:100%}
 .l-wrap{max-width:1080px;margin:0 auto;padding:0 24px}
-.l-h{position:sticky;top:0;background:rgba(250,248,243,.92);backdrop-filter:blur(8px);border-bottom:1px solid #E9E2D4;z-index:20}
+.l-h{position:fixed;top:0;left:0;right:0;background:rgba(250,248,243,.92);backdrop-filter:blur(8px);border-bottom:1px solid #E9E2D4;z-index:20}
 .l-hd{display:flex;align-items:center;gap:18px;height:60px}
 .l-logo{font-family:Fraunces;font-weight:700;font-size:23px;color:#8A5A12;display:flex;align-items:center}
 .lgt a.l-logo,.lgt a.l-logo:hover{color:#8A5A12}
