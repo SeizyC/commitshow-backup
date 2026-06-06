@@ -37,7 +37,7 @@ const CSS = `
 .l-h{position:sticky;top:0;background:rgba(250,248,243,.92);backdrop-filter:blur(8px);border-bottom:1px solid #E9E2D4;z-index:20}
 .l-hd{display:flex;align-items:center;gap:18px;height:60px}
 .l-logo{font-family:Fraunces;font-weight:700;font-size:23px;color:#211C15;display:flex;align-items:center}
-.l-logoshow{color:#fff}
+.l-logoshow{color:#A39A89}
 .l-dot{width:9px;height:9px;border-radius:50%;background:#B5791C;display:inline-block}
 .l-catpick{display:inline-flex;align-items:center;gap:5px;font-size:14.5px;color:#6E6557;cursor:pointer;white-space:nowrap;padding-right:13px;margin-right:3px;border-right:1px solid #E0D8C8;font-weight:500}.l-catpick:hover{color:#211C15}
 .l-crumbcat{display:inline-flex;align-items:center;gap:4px;cursor:pointer;color:#6E6557}.l-crumbcat:hover{color:#211C15;text-decoration:underline}
@@ -231,10 +231,7 @@ export function LegitShell({ children }: { children: ReactNode }) {
                     <LegitBell recipientId={user.id || ''} />
                     <ProfileMenu name={name} email={user.email || ''} initial={initial} avatar={member?.avatar_url || null} isAdmin={!!member?.is_admin} memberId={user.id || ''} onSignOut={() => signOut('/v2')} />
                   </>
-                : <>
-                    <span className="l-login" onClick={() => openAuth('signin')}>Log in</span>
-                    <span className="l-btn" onClick={() => openAuth('signup')}>Sign up — free</span>
-                  </>}
+                : <span className="l-btn" onClick={() => openAuth('signin')}>Start</span>}
             </div>
           </div>
         </header>
@@ -822,10 +819,11 @@ const BM_AXES: [keyof Benchmark, string, string][] = [
   ['transparency', 'Transparency', '#7E8A4E'], // olive
 ]
 const BM_FORM: Record<string, string> = { web: 'live site', app_store: 'App Store signals', github: 'GitHub signals', npm: 'npm signals' }
-export function BenchmarkChart({ b }: { b: Benchmark }) {
+export function BenchmarkChart({ b, showOverall = false }: { b: Benchmark; showOverall?: boolean }) {
   return (
     <div className="l-bm">
-      <div className="l-bmsrc" style={{ textAlign: 'left', margin: '4px 0 13px' }}>evaluated on {BM_FORM[b.form] || b.form}</div>
+      {showOverall && <div className="l-bmtop" title="overall (admin only)"><span className="l-bmscore">{b.overall}</span><span className="l-bmscoremax">/100</span></div>}
+      <div className="l-bmsrc" style={{ textAlign: showOverall ? 'center' : 'left', margin: '4px 0 13px' }}>evaluated on {BM_FORM[b.form] || b.form}</div>
       <div className="l-bmbars">
         {BM_AXES.map(([k, label, color]) => {
           const v = (b[k] as number) || 0
