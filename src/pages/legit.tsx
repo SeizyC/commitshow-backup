@@ -504,7 +504,8 @@ const SPECIALTY_LABEL: Record<string, string> = Object.fromEntries(SPECIALTIES.m
 
 // Ticket tier → star/badge tone + label. More vouches = hotter color.
 export function ticketTier(n: number): { tone: string; label: string } {
-  if (n >= 15) return { tone: '#C8102E', label: 'Certified legit' }   // scarlet
+  if (n >= 25) return { tone: '#7C3AED', label: 'Legendary' }         // violet
+  if (n >= 10) return { tone: '#C8102E', label: 'Certified legit' }   // scarlet
   if (n >= 5) return { tone: '#C2752A', label: 'Crowd-vouched' }       // bronze
   if (n >= 1) return { tone: '#E0A92E', label: 'Vouched' }            // gold
   return { tone: '#C9BBA0', label: '' }                                // muted

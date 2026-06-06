@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { FaviconTile, LegitShell, LegitVouch, RatingPanel, ReactionBar, StarRating, ticketTier, useLegitAuth, visuals, type Listing } from './legit'
+import { FaviconTile, LegitShell, LegitVouch, RatingPanel, ReactionBar, StarRating, TicketBadge, ticketTier, useLegitAuth, visuals, type Listing } from './legit'
 
 export function ListingDetailPage() {
   const { slug } = useParams<{ slug: string }>()
@@ -65,7 +65,10 @@ function Detail({ p }: { p: Listing }) {
         <FaviconTile name={p.name} domain={p.domain} icon={vIcon} cls="l-ico" />
         <div>
           <h1 style={{ fontSize: 32, lineHeight: 1.1 }}>{p.name}</h1>
-          <StarRating value={rating.avg} count={rating.count} tone={starTone} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 13, flexWrap: 'wrap' }}>
+            <StarRating value={rating.avg} count={rating.count} tone={starTone} />
+            {ticketCount > 0 && <TicketBadge count={ticketCount} />}
+          </div>
           <div className="l-one">{p.tagline || p.description}</div>
           <div className="l-pills">
             <span className="l-pill plat">{p.platform || 'web'}</span>
