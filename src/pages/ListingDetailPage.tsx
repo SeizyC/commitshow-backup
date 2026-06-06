@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { BenchmarkChart, CategoryPicker, FaviconTile, LegitShell, LegitVouch, RatingPanel, ReactionBar, ReviewsSection, StarRating, TicketBadge, ticketTier, useLegitAuth, visuals, type Listing } from './legit'
 import { useAuth } from '../lib/auth'
+import { setHead, clearJsonLd } from '../lib/seo'
 
 export function ListingDetailPage() {
   const { slug } = useParams<{ slug: string }>()
@@ -58,6 +59,27 @@ function Detail({ p }: { p: Listing }) {
     return () => { alive = false; window.removeEventListener('legit:rating', loadRating) }
   }, [p.id])
   const starTone = ticketTier(ticketCount).tone
+
+  // SEO/AEO head for client nav + JS crawlers (edge middleware covers the rest)
+  useEffect(() => {
+    const cat = p.category || p.platform || 'service'
+    const blurb = (p.tagline || p.description || '').replace(/\s+/g, ' ').trim().slice(0, 160)
+    const rated = rating.count > 0 ? `Rated ${rating.avg}★ by ${rating.count}. ` : ''
+    setHead({
+      title: `${p.name} — ${(p.tagline || cat).slice(0, 60)} | Legit.Show`,
+      description: `${blurb}. ${rated}Features, pricing, reviews and an objective benchmark on Legit.Show.`.replace(/\s+/g, ' ').slice(0, 200),
+      canonical: `https://commit.show/v2/s/${p.slug}`,
+      jsonld: {
+        '@context': 'https://schema.org', '@type': 'SoftwareApplication',
+        name: p.name, url: p.url, applicationCategory: cat,
+        operatingSystem: /apps\.apple\.com/.test(p.url) ? 'iOS' : 'Web',
+        description: (p.description || p.tagline || '').replace(/\s+/g, ' ').trim().slice(0, 280),
+        ...(p.image_url || p.icon_url ? { image: p.image_url || p.icon_url } : {}),
+        ...(rating.count > 0 ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: rating.avg, reviewCount: rating.count, bestRating: 5, worstRating: 1 } } : {}),
+      },
+    })
+    return () => clearJsonLd()
+  }, [p, rating.avg, rating.count])
   return (
     <>
       <div className="l-crumb" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>

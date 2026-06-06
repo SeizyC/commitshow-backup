@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { CategoryPicker, LegitShell, ListingRow, PremiumCard, type Listing } from './legit'
+import { setHead, clearJsonLd } from '../lib/seo'
 
 type Stats = { uses_count: number; positive_count: number; negative_count: number }
 
@@ -61,6 +62,19 @@ export function DirectoryPage() {
         setTickets(m)
       })
     return () => { alive = false }
+  }, [])
+
+  useEffect(() => {
+    setHead({
+      title: 'Legit.Show — every launched service, tested',
+      description: 'A directory of launched web apps, SaaS, AI tools, MCP servers and Skills — what each does, who it is for, real ratings, and an objective benchmark.',
+      canonical: 'https://commit.show/v2',
+      jsonld: {
+        '@context': 'https://schema.org', '@type': 'WebSite', name: 'Legit.Show', url: 'https://commit.show/v2',
+        potentialAction: { '@type': 'SearchAction', target: 'https://commit.show/v2?q={search_term_string}', 'query-input': 'required name=search_term_string' },
+      },
+    })
+    return () => clearJsonLd()
   }, [])
 
   const cats = useMemo(() => {

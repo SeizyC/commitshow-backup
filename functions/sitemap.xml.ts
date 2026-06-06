@@ -77,6 +77,7 @@ const SECTION_URLS: Array<{ loc: string; changefreq: string; priority: string }>
   { loc: '/scouts',                 changefreq: 'daily',   priority: '0.7' },
   { loc: '/creators',               changefreq: 'daily',   priority: '0.7' },
   { loc: '/library',                changefreq: 'daily',   priority: '0.8' },
+  { loc: '/v2',                     changefreq: 'daily',   priority: '0.9' },
   { loc: '/community',              changefreq: 'daily',   priority: '0.8' },
   { loc: '/community/open-mic',     changefreq: 'daily',   priority: '0.7' },
   { loc: '/community/build-logs',   changefreq: 'daily',   priority: '0.7' },
@@ -140,6 +141,19 @@ async function fetchProjects(env: Env): Promise<ProjectRow[]> {
   return await res.json() as ProjectRow[]
 }
 
+interface ListingRow { slug: string; updated_at: string | null; last_fetched_at: string | null }
+async function fetchListings(env: Env): Promise<ListingRow[]> {
+  const url     = env.SUPABASE_URL      ?? 'https://tekemubwihsjdzittoqf.supabase.co'
+  const anonKey = env.SUPABASE_ANON_KEY ?? ''
+  if (!anonKey) return []
+  const res = await fetch(
+    `${url}/rest/v1/listings?select=slug,updated_at,last_fetched_at&order=created_at.desc&limit=10000`,
+    { headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` } },
+  )
+  if (!res.ok) return []
+  return await res.json() as ListingRow[]
+}
+
 export const onRequest: PagesFunction<Env> = async (ctx) => {
   const base = 'https://commit.show'
 
@@ -152,11 +166,17 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
   // serializing two RTs to Supabase).
   let postsXml    = ''
   let projectsXml = ''
+  let listingsXml = ''
   try {
-    const [posts, projects] = await Promise.all([
+    const [posts, projects, listings] = await Promise.all([
       fetchPosts(ctx.env),
       fetchProjects(ctx.env),
+      fetchListings(ctx.env),
     ])
+    listingsXml = listings
+      .filter(l => l.slug)
+      .map(l => urlEntry(`${base}/v2/s/${l.slug}`, l.updated_at ?? l.last_fetched_at, 'weekly', '0.7'))
+      .join('\n')
 
     postsXml = posts
       .map(p => {
@@ -188,7 +208,7 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
   const body =
 `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${sections}${postsXml ? '\n' + postsXml : ''}${projectsXml ? '\n' + projectsXml : ''}
+${sections}${listingsXml ? '\n' + listingsXml : ''}${postsXml ? '\n' + postsXml : ''}${projectsXml ? '\n' + projectsXml : ''}
 </urlset>
 `
 
