@@ -143,6 +143,7 @@ const CSS = `
 .l-authsubmit{width:100%;text-align:center;padding:11px;margin-top:3px}
 .l-authtoggle{text-align:center;font-size:13px;color:#6E6557;margin-top:16px}.l-authtoggle span{color:#97600F;cursor:pointer;font-weight:500}.l-authtoggle span:hover{text-decoration:underline}
 .l-authsent{font-size:14px;color:#2C261D;text-align:center;line-height:1.55;padding:12px 0}
+.l-authemail{text-align:center;font-size:13px;color:#97600F;cursor:pointer;margin-top:12px;font-weight:500}.l-authemail:hover{text-decoration:underline}
 .l-react{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:130;pointer-events:none}
 .l-reactcard{pointer-events:auto;background:#FFFDF8;border:1px solid #E7D4AC;border-radius:18px;padding:24px 34px;text-align:center;box-shadow:0 24px 60px rgba(60,45,20,.28);animation:l-pop .26s cubic-bezier(.2,1.3,.5,1);cursor:pointer}
 @keyframes l-pop{0%{transform:scale(.7);opacity:0}100%{transform:scale(1);opacity:1}}
@@ -713,7 +714,8 @@ function LegitAuthModal({ open, onClose, initialMode = 'signin' }: { open: boole
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [sent, setSent] = useState(false)
-  useEffect(() => { if (open) { setMode(initialMode); setErr(''); setSent(false) } }, [open, initialMode])
+  const [showEmail, setShowEmail] = useState(false)
+  useEffect(() => { if (open) { setMode(initialMode); setErr(''); setSent(false); setShowEmail(false) } }, [open, initialMode])
   if (!open) return null
 
   const submit = async () => {
@@ -744,16 +746,28 @@ function LegitAuthModal({ open, onClose, initialMode = 'signin' }: { open: boole
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="#211C15" aria-hidden="true"><path d="M12 1.5a10.5 10.5 0 0 0-3.32 20.46c.53.1.72-.23.72-.5v-1.76c-2.92.63-3.54-1.4-3.54-1.4-.48-1.22-1.17-1.55-1.17-1.55-.95-.65.07-.64.07-.64 1.06.07 1.61 1.09 1.61 1.09.94 1.6 2.46 1.14 3.06.87.1-.68.37-1.14.67-1.4-2.33-.27-4.78-1.17-4.78-5.18 0-1.15.41-2.08 1.08-2.82-.11-.27-.47-1.34.1-2.8 0 0 .88-.28 2.88 1.07a10 10 0 0 1 5.24 0c2-1.35 2.88-1.07 2.88-1.07.57 1.46.21 2.53.1 2.8.67.74 1.08 1.67 1.08 2.82 0 4.02-2.46 4.9-4.8 5.16.38.33.71.97.71 1.96v2.9c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5z"/></svg>
                 Continue with GitHub
               </button>
-              <div className="l-author"><span>or with email</span></div>
-              <input className="l-authin" type="email" placeholder="you@email.com" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
-              <input className="l-authin" type="password" placeholder="Password" value={pw} onChange={e => setPw(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') submit() }} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} />
-              {err && <div className="l-autherr">{err}</div>}
-              <button className="l-btn l-authsubmit" style={{ opacity: busy ? 0.6 : 1, pointerEvents: busy ? 'none' : 'auto' }} onClick={submit}>{mode === 'signin' ? 'Sign in' : 'Create account'}</button>
-              <div className="l-authtoggle">
-                {mode === 'signin'
-                  ? <>New here? <span onClick={() => { setMode('signup'); setErr('') }}>Create an account</span></>
-                  : <>Already have an account? <span onClick={() => { setMode('signin'); setErr('') }}>Sign in</span></>}
-              </div>
+              <button className="l-oauth" onClick={() => signInWithOAuth('twitter')}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="#211C15" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/></svg>
+                Continue with X
+              </button>
+              <button className="l-oauth" onClick={() => signInWithOAuth('linkedin_oidc')}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="#0A66C2" aria-hidden="true"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.13 1.45-2.13 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z"/></svg>
+                Continue with LinkedIn
+              </button>
+              {!showEmail
+                ? <div className="l-authemail" onClick={() => setShowEmail(true)}>or continue with email</div>
+                : <>
+                    <div className="l-author"><span>email</span></div>
+                    <input className="l-authin" type="email" placeholder="you@email.com" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" autoFocus />
+                    <input className="l-authin" type="password" placeholder="Password" value={pw} onChange={e => setPw(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') submit() }} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} />
+                    {err && <div className="l-autherr">{err}</div>}
+                    <button className="l-btn l-authsubmit" style={{ opacity: busy ? 0.6 : 1, pointerEvents: busy ? 'none' : 'auto' }} onClick={submit}>{mode === 'signin' ? 'Sign in' : 'Create account'}</button>
+                    <div className="l-authtoggle">
+                      {mode === 'signin'
+                        ? <>New here? <span onClick={() => { setMode('signup'); setErr('') }}>Create an account</span></>
+                        : <>Already have an account? <span onClick={() => { setMode('signin'); setErr('') }}>Sign in</span></>}
+                    </div>
+                  </>}
             </>}
       </div>
     </div>
