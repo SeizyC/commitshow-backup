@@ -37,7 +37,7 @@ const CSS = `
 .l-hd{display:flex;align-items:center;gap:18px;height:60px}
 .l-logo{font-family:Fraunces;font-weight:700;font-size:23px;color:#B5791C;display:flex;align-items:center}
 .lgt a.l-logo,.lgt a.l-logo:hover{color:#B5791C}
-.l-logoowl{height:40px;width:auto;margin-right:8px;flex-shrink:0;object-fit:contain}
+.l-logoowl{height:28px;width:auto;margin-right:7px;flex-shrink:0;object-fit:contain}
 .l-logoshow{color:#B5791C}
 .l-dot{width:9px;height:9px;border-radius:50%;background:#B5791C;display:inline-block}
 .l-catpick{display:inline-flex;align-items:center;gap:5px;font-size:14.5px;color:#6E6557;cursor:pointer;white-space:nowrap;padding-right:13px;margin-right:3px;border-right:1px solid #E0D8C8;font-weight:500}.l-catpick:hover{color:#211C15}
