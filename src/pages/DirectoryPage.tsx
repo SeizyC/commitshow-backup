@@ -146,10 +146,7 @@ export function DirectoryPage() {
 
       <div className="l-wrap">
         {!q && !cat && featured.length > 0 && (
-          <>
-            <div className="l-prehead">Featured</div>
-            <div className="l-premium">{featured.map(p => <PremiumCard key={p.id} p={p} tickets={tickets.get(p.id) || 0} />)}</div>
-          </>
+          <div className="l-premium">{featured.map(p => <PremiumCard key={p.id} p={p} tickets={tickets.get(p.id) || 0} />)}</div>
         )}
         {cats.length > 0 && (
           <div className="l-catwrap">

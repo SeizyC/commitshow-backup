@@ -53,7 +53,7 @@ const CSS = `
 .l-lockic{display:block;margin:14px auto 0}
 .l-avatar{width:34px;height:34px;border-radius:50%;background:#B5791C;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;cursor:pointer;font-size:15px}
 /* landing hero */
-.l-herobig{padding:60px 0 38px;text-align:center;border-bottom:1px solid #E9E2D4;background:linear-gradient(180deg,#FBF8F1 0%,#FAF8F3 100%)}
+.l-herobig{padding:60px 0 38px;text-align:center;background:linear-gradient(180deg,#FBF8F1 0%,#FAF8F3 100%)}
 .l-herobig h1{font-size:clamp(34px,5vw,52px);line-height:1.05;max-width:800px;margin:0 auto}
 .l-herobig .sub{font-size:18px;color:#6E6557;max-width:640px;margin:18px auto 28px;line-height:1.5}
 .l-owl{display:block;width:108px;height:auto;margin:6px auto 0;position:relative;z-index:1}
