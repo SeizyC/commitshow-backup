@@ -536,6 +536,7 @@ export function LegitVouch({ listingId }: { listingId: string }) {
   const [count, setCount] = useState(0)
   const [specs, setSpecs] = useState<Record<string, number>>({})
   const [mine, setMine] = useState<string | null>(null)
+  const [used, setUsed] = useState(0)
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
@@ -548,6 +549,14 @@ export function LegitVouch({ listingId }: { listingId: string }) {
       .then(({ data }) => { if (alive) setMine((data as { specialty: string } | null)?.specialty ?? null) })
     return () => { alive = false }
   }, [listingId, myId])
+
+  // monthly used count — refreshed when the popup opens
+  useEffect(() => {
+    if (!open || !myId) return
+    const d = new Date(); const monthStart = new Date(d.getFullYear(), d.getMonth(), 1).toISOString()
+    supabase.from('listing_tickets').select('listing_id', { count: 'exact', head: true }).eq('member_id', myId).gte('created_at', monthStart)
+      .then(({ count: c }) => setUsed(c || 0))
+  }, [open, myId])
 
   const tier = ticketTier(count)
   const top = Object.entries(specs).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k]) => SPECIALTY_LABEL[k] || k)
@@ -562,14 +571,14 @@ export function LegitVouch({ listingId }: { listingId: string }) {
       : supabase.from('listing_tickets').insert({ listing_id: listingId, member_id: myId, specialty })
     const { error } = await q
     if (error) setMsg(/quota/i.test(error.message) ? `You've used all ${TICKET_QUOTA} legit tickets this month.` : 'Could not throw the ticket — try again.')
-    else { setSpecs(prev => { const n = { ...prev }; if (had && mine) n[mine] = Math.max(0, (n[mine] || 1) - 1); n[specialty] = (n[specialty] || 0) + 1; return n }); if (!had) setCount(c => c + 1); setMine(specialty); window.dispatchEvent(new Event('legit:tickets')) }
+    else { setSpecs(prev => { const n = { ...prev }; if (had && mine) n[mine] = Math.max(0, (n[mine] || 1) - 1); n[specialty] = (n[specialty] || 0) + 1; return n }); if (!had) { setCount(c => c + 1); setUsed(u => u + 1) } setMine(specialty); window.dispatchEvent(new Event('legit:tickets')) }
     setBusy(false)
   }
   const takeBack = async () => {
     if (!myId || busy) return
     setBusy(true); setMsg('')
     const { error } = await supabase.from('listing_tickets').delete().eq('listing_id', listingId).eq('member_id', myId)
-    if (!error) { setSpecs(prev => { const n = { ...prev }; if (mine) n[mine] = Math.max(0, (n[mine] || 1) - 1); return n }); setCount(c => Math.max(0, c - 1)); setMine(null); window.dispatchEvent(new Event('legit:tickets')) }
+    if (!error) { setSpecs(prev => { const n = { ...prev }; if (mine) n[mine] = Math.max(0, (n[mine] || 1) - 1); return n }); setCount(c => Math.max(0, c - 1)); setUsed(u => Math.max(0, u - 1)); setMine(null); window.dispatchEvent(new Event('legit:tickets')) }
     setBusy(false)
   }
 
@@ -601,6 +610,7 @@ export function LegitVouch({ listingId }: { listingId: string }) {
                     ))}
                   </div>
                   {mine && <div className="l-modalhint">Tap your pick again to take the ticket back.</div>}
+                  <div className="l-tkquota">{Math.max(0, TICKET_QUOTA - used)} of {TICKET_QUOTA} legit tickets left this month</div>
                   {msg && <div className="l-tkquota" style={{ color: '#C8102E' }}>{msg}</div>}
                 </>}
           </div>
