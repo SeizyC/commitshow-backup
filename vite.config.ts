@@ -45,6 +45,34 @@ function emitVersionJson(buildId: string): PluginOption {
   }
 }
 
+// React Fast Refresh preamble. On this toolchain (Vite 8 / rolldown +
+// @vitejs/plugin-react 6) the plugin does NOT inject its dev preamble into
+// index.html, so every module that Fast Refresh rewrites throws
+// `$RefreshSig$ is not defined` and the app white-screens on `vite` dev.
+// We inject the exact preamble the plugin documents ourselves, dev/preview
+// only (`apply: 'serve'`), head-prepended so it runs before /src/main.tsx.
+// `/@react-refresh` is already served by the plugin (returns 200); we only
+// needed the bootstrap that wires the globals.
+function reactRefreshPreamble(): PluginOption {
+  return {
+    name: 'commitshow-react-refresh-preamble',
+    apply: 'serve',
+    transformIndexHtml() {
+      return [{
+        tag: 'script',
+        attrs: { type: 'module' },
+        injectTo: 'head-prepend',
+        children:
+          'import RefreshRuntime from "/@react-refresh"\n' +
+          'RefreshRuntime.injectIntoGlobalHook(window)\n' +
+          'window.$RefreshReg$ = () => {}\n' +
+          'window.$RefreshSig$ = () => (type) => type\n' +
+          'window.__vite_plugin_react_preamble_installed__ = true',
+      }]
+    },
+  }
+}
+
 const BUILD_ID = resolveBuildId()
 
 // @cloudflare/vite-plugin handles Workers Static Assets deployment config
@@ -52,8 +80,13 @@ const BUILD_ID = resolveBuildId()
 // plugin declared here stops Wrangler's deploy-time framework auto-setup
 // from running (the one that was injecting a `/* /index.html 200` redirect
 // and then failing its own loop validation).
-export default defineConfig({
-  plugins: [react(), cloudflare(), emitVersionJson(BUILD_ID)],
+export default defineConfig(({ command }) => ({
+  // cloudflare() is build/deploy-only (Workers Static Assets + wrangler.jsonc
+  // SPA fallback). In dev/preview it intercepts index.html and swallows
+  // @vitejs/plugin-react's Fast Refresh preamble, producing a `$RefreshSig$ is
+  // not defined` blank screen on every route. Gate it to `build` so `vite` dev
+  // gets working HMR; the dev and preview servers supply their own SPA fallback.
+  plugins: [react(), reactRefreshPreamble(), ...(command === 'build' ? [cloudflare()] : []), emitVersionJson(BUILD_ID)],
   define: {
     __COMMITSHOW_BUILD_ID__: JSON.stringify(BUILD_ID),
   },
@@ -84,4 +117,4 @@ export default defineConfig({
       },
     },
   },
-})
+}))
