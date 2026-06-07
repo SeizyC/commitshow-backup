@@ -184,7 +184,7 @@ export default function App() {
         </Suspense>
       </ErrorBoundary>
 
-      <footer className="relative z-10 py-10 px-6 text-center" style={{ borderTop: '1px solid rgba(240,192,64,0.08)' }}>
+      {!isChromeless && <footer className="relative z-10 py-10 px-6 text-center" style={{ borderTop: '1px solid rgba(240,192,64,0.08)' }}>
         <div className="font-display font-bold text-lg mb-2" style={{ color: 'var(--gold-500)' }}>
           commit<span style={{ color: 'rgba(248,245,238,0.4)' }}>.show</span>
         </div>
@@ -208,7 +208,7 @@ export default function App() {
         <p className="font-mono text-[11px]" style={{ color: 'var(--text-faint)' }}>
           Vibe Coding Ladder · US Launch 2026 · All scores algorithmically determined
         </p>
-      </footer>
+      </footer>}
     </div>
   )
 }
