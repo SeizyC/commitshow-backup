@@ -34,7 +34,7 @@ PRD 버전: v2 (2026-04-24) — v1 통합 기획서 (2026-04-19 + Creator Commun
 2. **졸업 기준 %-based 상대평가** — v1.8 "75점 2주 유지 + Live URL + 3 forecasts + auto 35" **절대 5-AND 게이트 폐기**. 대신 리그 내 상대평가 상위 20% 자동 졸업: Valedictorian ≈0.5% (1명 고정) · Honors 5% · Graduate 14.5% · Rookie Circle 80%. §6 참조.
 3. **Applaud polymorphic target** — `applauds` 테이블 (`member_id`, `target_type`, `target_id`) 로 재설계. `target_type` ∈ {product, comment, build_log, stack, brief, recommit}. 기존 `UNIQUE (member_id, season_id)` 제약 제거 → `UNIQUE (member_id, target_type, target_id)`. 자기 콘텐츠 applaud 금지 (이해충돌).
 4. **Creator Community 4 메뉴 V1 Day 1 필수** — Build Logs · Stacks · Asks · Office Hours. Reddit/Indie Hackers 이탈 방지 + LinkedIn-for-Vibecoders 장기 비전의 기초 증거. §13-B 신설.
-5. **Rookie Circle 톤 엄격 유지** — "낙제 · 실패 · 탈락 · 패자 · 루저 · Loser · Failed · 미달 · 미흡" UI · 코드 · 약관 · 에러 메시지 · Codex 프롬프트 **전 레이어 금지**. 허용: "Rookie Circle · Try Again · 다음 Commit · Retry · Next season".
+5. **Rookie Circle 톤 엄격 유지** — "낙제 · 실패 · 탈락 · 패자 · 루저 · Loser · Failed · 미달 · 미흡" UI · 코드 · 약관 · 에러 메시지 · Claude API/Codex 작업 프롬프트 **전 레이어 금지**. 허용: "Rookie Circle · Try Again · 다음 Commit · Retry · Next season".
 6. **브랜드 verb 3-체계 (재정정 2026-05-01 · 4-29 통합 롤백)** — 라틴어 audīre 어원 공유, 본질 다른 행위에 다른 verb. **행위 주체로 verb 가른다**:
    - **Audition** (Creator 행위 · 사람이 무대에 오름) — 첫 등록 · 재등판 · CTA · 이벤트 entry. Hero CTA: `Audition your product →` · ProfilePage "No auditions yet · Audition your first product…" · LadderPage `AUDITION YOUR PROJECT →` · 이력 페이지 `Audition Log` · Hall of Fame 메타포 `Audition Archive`.
    - **Audit** (Engine 행위 · 도구가 측정) — analyze-project Edge Function 호출 · `Re-audit →` 버튼 · `Audit report` 출력 · `/audit` 메서드 페이지 · CLI `commitshow audit` · `commitshow-mcp` audit_repo 도구 · `api.commit.show/audit` REST 엔드포인트.
@@ -43,11 +43,11 @@ PRD 버전: v2 (2026-04-24) — v1 통합 기획서 (2026-04-19 + Creator Commun
    룰: **사용자 시점 = Audition · 엔진 시점 = Audit.** 4-29 에 두 verb 를 "Audit 으로 통합" 시도했다가 5-01 에 잘못된 방향으로 판명, 이전 분리 룰 복구. 같은 폼 안에서도 Creator 가 누르는 버튼은 "Audition", 그 결과로 Engine 이 만드는 출력은 "Audit report" — 자연스럽게 두 단어가 같이 등장.
 
    "Commit" 은 브랜드 wordmark·도메인·Hall of Fame 메타포로만 유지 ("commit.show" · "Every commit, on stage"). "Submit" / "Register" / "Apply" / "Score your project" UI 금지. **"AI" 단어 사용자 노출 금지** — "AI analysis" → "Audit report" 식으로 치환 (§19 rule 11).
-7. **Audit 5+3 비대칭 유지** — 사용자 노출 명칭 "Audit report" (내부 기술 레이어 = Codex 호출 · §3). 장점 5 / 우려 3. 5+5 대칭 형식 **금지** (아첨 인지 편향 + Creator 방어 부담 완화).
+7. **Audit 5+3 비대칭 유지** — 사용자 노출 명칭 "Audit report" (내부 기술 레이어 = Claude 호출 · §3). 장점 5 / 우려 3. 5+5 대칭 형식 **금지** (아첨 인지 편향 + Creator 방어 부담 완화).
 
 ### 1-B. 참조 문서
 
-- `supabase/schema.sql` — 현재 DB 스키마 (v2 마이그레이션 대상)
+- `supabase/schema.sql` — v1.8까지의 baseline 스키마. v2 이후 실제 PRD delta 는 `supabase/migrations/`가 진실 소스이며, 핵심 파일은 `supabase/migrations/20260424_v2_prd_realignment.sql` (SQL 실행 완료).
 - v1 통합 기획서 (2026-04-19 + 2026-04-23 Creator Community 추가) — 본 AGENTS.md 와 1:1 대응. 기획서는 외부 문서로 관리, AGENTS.md 는 Codex 가 repo 에서 바로 실행 가능한 레벨의 운영 지침·요약.
 - **`INTERNAL.md`** (gitignored · 비공개) — 가격/환불 · 법적 검토 노트 · 어뷰징 방어 4층 상세 · audit calibration baseline · admin secrets · TODO. AGENTS.md 의 슬림 stub 들이 가리키는 원본.
 - **공개 페이지 (사용자 노출)**:
@@ -79,7 +79,7 @@ PRD 버전: v2 (2026-04-24) — v1 통합 기획서 (2026-04-19 + Creator Commun
 - "리그 진척률" 표현만: Bonding Curve 언급 금지 (Pump.fun 연상)
 - Rookie Circle 톤: 낙제 · 실패 · 탈락 · 패자 · Loser · Failed · 미달 전 레이어 금지 (§1-A ⑤)
 - 브랜드 verb 3-체계 (§1-A ⑥ 2026-04-29): **Audit** (ladder default) · **Audition** (event entry) · **Audited** (passive result). 라틴어 audīre 어원 공유 · 본질 다른 행위에 다른 verb. AI 레이어 = "Audit". "Commit" 은 도메인·브랜드 메타포만. "Submit" / "Register" / "Apply" / "Score your project" UI 금지.
-- **"AI" 단어 사용자 노출 금지**: "AI analysis" / "AI score" / "AI feedback" 전부 → **Audit / Audit report / Audit findings** 로 치환. 이유: 슬롭 연상 + 제품 본질과 거리 + Audit 이 더 정확. 예외: Creator 가 빌드에 쓴 도구를 묘사할 때 "AI-assisted development" · "with Cursor · Codex · Lovable" 같은 서술은 허용 (바이브코딩 맥락). 내부 코드·함수·주석엔 "AI" 사용 무관.
+- **"AI" 단어 사용자 노출 금지**: "AI analysis" / "AI score" / "AI feedback" 전부 → **Audit / Audit report / Audit findings** 로 치환. 이유: 슬롭 연상 + 제품 본질과 거리 + Audit 이 더 정확. 예외: Creator 가 빌드에 쓴 도구를 묘사할 때 "AI-assisted development" · "with Cursor · Claude · Lovable" 같은 서술은 허용 (바이브코딩 맥락). 내부 코드·함수·주석엔 "AI" 사용 무관.
 - 수익·금융 연상 금지: 배당 · ROI · 베팅 · 투자수익 · 본드 커브 · Paid Membership (§17 §20.6)
 
 **점수·졸업**
@@ -110,7 +110,7 @@ PRD 버전: v2 (2026-04-24) — v1 통합 기획서 (2026-04-19 + Creator Commun
 ```
 Frontend:    React 18 + Vite + TypeScript + Tailwind CSS
 Backend:     Supabase (PostgreSQL + Auth + Edge Functions + Realtime)
-Audit 엔진:  Codex API · Codex-sonnet-4-6 (현재) — 점수 산출 + 인사이트
+Audit 엔진:  Claude API · claude-sonnet-4-6 (현재) — 점수 산출 + 인사이트
              (내부 기술 레이어 명칭 · 사용자 UI 에는 "Audit" 만 노출 · §19 rule 11)
 Lighthouse:  Google PageSpeed Insights API (무료 키 or VITE_PAGESPEED_KEY)
 GitHub 분석: GitHub REST API (공개 레포 파싱)
@@ -225,11 +225,12 @@ vibe/
 │   │   └── ProjectFeed.tsx  # Supabase 실시간 피드
 │   ├── lib/
 │   │   ├── supabase.ts      # DB 클라이언트 + Project 타입
-│   │   └── analysis.ts      # PageSpeed + GitHub + Codex 파이프라인
+│   │   └── analysis.ts      # PageSpeed + GitHub + Claude 파이프라인
 │   ├── App.tsx              # 전체 페이지 레이아웃
 │   └── index.css            # 디자인 토큰 + 전역 스타일
 ├── supabase/
-│   └── schema.sql           # DB 스키마 + RLS 정책 (Supabase에 실행 필요)
+│   ├── schema.sql           # v1.8 baseline 스키마
+│   └── migrations/          # v2+ PRD delta · lexicographic order 적용
 ├── public/
 │   ├── favicon.svg
 │   └── hero-bg.webp         # 히어로 애니메이션 배경
@@ -316,7 +317,7 @@ Hard penalty (deterministic · pre-cap):
                                 (.env.example/.env.template 등은 제외)
                                 보안 위반은 명백 — polish 로 상쇄 불가
 
-Tier-1 evidence (수집만 · 슬롯 점수 영향 X · Codex prompt 에 evidence 로 surface):
+Tier-1 evidence (수집만 · 슬롯 점수 영향 X · Claude prompt 에 evidence 로 surface):
   security_headers              CSP · HSTS · X-Frame · X-Content-Type · Referrer · Permissions
   legal_pages                   /privacy /terms 도달 가능성 (3+4 path variants probe)
   readme_depth_score            README line count + Install/Usage 섹션
@@ -329,9 +330,9 @@ Total cap: 52pt + 10 soft = 62. score_auto cap 65.
 
 CLI walk-on score = score_auto / 50 × 100 (52 hard - 2 brief unattainable
                     · partial Brief substitute up to 3pt available).
-League score      = Codex.score.current (qualitative bonuses + deductions adjusted).
+League score      = Claude.score.current (qualitative bonuses + deductions adjusted).
 
-엔진 모델: Codex-sonnet-4-6 (사용자 노출 명칭 = "Audit" / "Audit report").
+엔진 모델: claude-sonnet-4-6 (사용자 노출 명칭 = "Audit" / "Audit report").
 
 검증 baseline: 내부 reference set 5개 (supabase / shadcn-ui / cal.com /
 vercel ai / vibe) 의 점수 분포로 calibration 검증. 정확한 점수는
@@ -415,7 +416,7 @@ Rookie Circle  (나머지 80%):
 
 - **전 레이어 금지 어휘**: 낙제 · 실패 · 탈락 · 패자 · 루저 · Loser · Failed · 미달 · 미흡 · Fell short
 - **허용 어휘**: Rookie Circle · Try Again · 다음 Commit · Retry · Next season · Keep building
-- 범위: UI 카피 · 컴포넌트 라벨 · 에러/상태 메시지 · Supabase 에러 문구 · Codex API 프롬프트 · 이메일 템플릿 · 약관 · README
+- 범위: UI 카피 · 컴포넌트 라벨 · 에러/상태 메시지 · Supabase 에러 문구 · Claude API 프롬프트 · Codex 작업 프롬프트 · 이메일 템플릿 · 약관 · README
 - Rookie Circle = "다음 Commit 을 향해 가는 동료 그룹" 포지션 · 낙오 라벨 아님
 
 ### 7.3 상금·환급 페이아웃 (§2 재확인)
@@ -586,7 +587,7 @@ analysis_snapshots
   rich_analysis jsonb
   parent_snapshot_id · delta_from_parent jsonb · score_total_delta int
   commit_sha · brief_sha         -- 분석 시점 Git HEAD/brief SHA (불변 증거)
-  model_version                   -- 'Codex-sonnet-4-6' 등 (현재 · 2026-04-27)
+  model_version                   -- 'claude-sonnet-4-6' 등 (현재 · 2026-04-27)
 
 applauds (v2 재설계 · polymorphic · §7.5)
   id · member_id · target_type · target_id · created_at
@@ -700,7 +701,7 @@ Quarterly (시즌 흡수)
 
 Tool Challenge
   duration: 30 days (default)
-  tool_filter: ['cursor' · 'Codex' · 'lovable' · ...]
+  tool_filter: ['cursor' · 'claude-code' · 'lovable' · ...]
   has_graduation: false · winner_count: 3
   scoring_method: audit_only
 
@@ -980,7 +981,7 @@ md_discoveries         -- 프로젝트 repo 자동 스캔 후보
 artifact_applications  -- Apply-to-my-repo PR 기록
 ```
 
-전체 스키마: `supabase/schema.sql` 참조. **v2 delta 는 별도 migration 파일로** (§20 TODO).
+스키마 기준: `supabase/schema.sql` 은 v1.8 baseline, v2+ 실제 delta 는 `supabase/migrations/` 참조. `20260424_v2_prd_realignment.sql` 은 실행 완료 상태이며, 이후 migration 은 lexicographic order 로 누적 적용.
 
 ---
 
@@ -1109,7 +1110,7 @@ Build Log/Stack 박수 받음 → 0.5 AP/applaud (§7.5)
 > 전환 (시간 축 Today/Week/Month/All · 밀도 우선 · 우측 핵심 액션 1~2개). 용어는 유지 —
 > "Artifact Library · Artifact" 그대로.
 >
-> **v1.8 업데이트 (2026-04-21)**: 품질 신호를 **파일 자동검사(Codex 4축 rubric)** → **커뮤니티 신호**
+> **v1.8 업데이트 (2026-04-21)**: 품질 신호를 **파일 자동검사(Claude 4축 rubric)** → **커뮤니티 신호**
 > (Creator 등급 + 다운로드 + Adoption + 졸업 provenance) 로 전환. 4축 스코어링은 내부 advisory
 > 로만 유지, 유료 허용·랭킹 어느 쪽도 gate 하지 않음. 랭킹은 `reputation_score` 합성치로 결정.
 >
@@ -1144,7 +1145,7 @@ commit.show Artifact Library = "졸업 증거 + 커뮤니티 신호 기반 · In
 |---|---|---|---|
 | **Build a feature** | "서비스에 기능 하나 더 붙이자" | Patch Recipe · MCP Config · Project Rules · Prompt Pack | Stripe + Supabase 결제 · RAG 검색 · 이메일 발송 · 대시보드 |
 | **Connect a service** | "외부 서비스 물려서 바로 써보자" | MCP Config · Patch Recipe | Slack / Linear / Notion / GitHub / Google Drive MCP · Webhook recipe |
-| **Tune your coding AI** | "Cursor/Codex 더 잘 돌려야지" | IDE Rules · Agent Skills · Project Rules · Prompt Pack | `.cursorrules` · Codex Skill · AGENTS.md template · code-review 프롬프트 세트 |
+| **Tune your coding AI** | "Cursor/Claude 더 잘 돌려야지" | IDE Rules · Agent Skills · Project Rules · Prompt Pack | `.cursorrules` · Claude Skill · CLAUDE.md template · code-review 프롬프트 세트 |
 | **Start a project** | "새 프로젝트 scaffold 부터 얹자" | Scaffold / BKit · Project Rules · 번들 | React SaaS Starter · Next+Supabase 템플릿 · Vibe Starter Kit |
 
 **폴백**: Intent 분류가 모호한 경우 Discovery 는 기본값 `build_feature` 로 태그하고 Creator
@@ -1157,10 +1158,10 @@ commit.show Artifact Library = "졸업 증거 + 커뮤니티 신호 기반 · In
 
 | 순위 | Format | 포함되는 것 | Target tools | 즉시 적용 난이도 |
 |---|---|---|---|---|
-| 1 | **MCP Config** | `mcp.json` · `.mcp/*` · `claude_desktop_config.json` · service connectors | Codex Desktop · Cursor · Windsurf · Cline | 70% 자동 (API 키 수동) |
+| 1 | **MCP Config** | `mcp.json` · `.mcp/*` · `claude_desktop_config.json` · service connectors | Claude Desktop · Cursor · Windsurf · Cline | 70% 자동 (API 키 수동) |
 | 2 | **IDE Rules** | `.cursorrules` · `.cursor/rules/*.mdc` · `.windsurfrules` · `.continuerules` · VSCode snippets | Cursor · Windsurf · Continue · Cline | Drop-in |
-| 3 | **Agent Skills** | `.Codex/skills/<name>/SKILL.md` + 보조 스크립트 · 디렉토리 번들 | Codex Agent SDK (ADK) · `~/.Codex/skills/` | 1-step unzip |
-| 4 | **Project Rules** | `AGENTS.md` · `AGENTS.md` · `RULES.md` (with `{{VARIABLES}}`) | 툴-agnostic · ADK-first | Drop-in + var 치환 |
+| 3 | **Agent Skills** | `.claude/skills/<name>/SKILL.md` + 보조 스크립트 · 디렉토리 번들 | Claude Agent SDK (ADK) · `~/.claude/skills/` | 1-step unzip |
+| 4 | **Project Rules** | `CLAUDE.md` · `AGENTS.md` · `RULES.md` (with `{{VARIABLES}}`) | 툴-agnostic · ADK-first | Drop-in + var 치환 |
 | 5 | **Prompt Pack** | copy-paste 프롬프트 모음 · 5개 미만 금지 | Universal | Trivial |
 | 6 | **Scaffold / BKit** | Forkable runnable starter repo (V1.5) | Universal git hosting | Fork → install → run |
 | — | **Patch Recipe** | 특정 integration ("Stripe + Supabase 연결") multi-file | 혼합 | 복합 |
@@ -1262,15 +1263,15 @@ reputation_score =
 |---|---|
 | MCP Config | `**/mcp.json` · `**/.mcp/*.json` · `**/claude_desktop_config.json` · `**/mcp-servers/**/*.json` |
 | IDE Rules | `.cursorrules` · `.cursor/rules/**/*.mdc` · `.windsurfrules` · `.windsurf/rules/**/*.md` · `.continuerules` · `.cline/rules/*` |
-| Agent Skills | `.Codex/skills/**/SKILL.md` + 같은 디렉토리 내 스크립트 (번들) |
-| Project Rules | `AGENTS.md` · `AGENTS.md` · `RULES.md` · `CONVENTIONS.md` (root 또는 docs/) |
+| Agent Skills | `.claude/skills/**/SKILL.md` + 같은 디렉토리 내 스크립트 (번들) |
+| Project Rules | `CLAUDE.md` · `AGENTS.md` · `RULES.md` · `CONVENTIONS.md` (root 또는 docs/) |
 | Prompt Pack | `prompts/**/*.md` · `**/prompts.md` (5+개 모아야 인정) |
 | Patch Recipe | `integrations/**/*.md` · `stripe-*.md` · `auth-*.md` · `deploy-*.md` + 관련 config 번들 |
 | 제외 | `README.md` (root), `LICENSE.md`, `CHANGELOG.md`, `node_modules/**`, `dist/**` |
 
 **4축 품질 스코어 (advisory-only · v1.8)**
 
-Codex tool_use 로 여전히 4축 점수를 산출하지만, **랭킹·유료 어느 쪽도 gate 하지 않음**.
+Claude tool_use 로 여전히 4축 점수를 산출하지만, **랭킹·유료 어느 쪽도 gate 하지 않음**.
 Discovery 에 감지된 후보는 전부 surface (v1.8 에서 `library_worthy` 필터 제거).
 품질 시그널은 커뮤니티(§15.3 reputation_score)가 대체.
 
@@ -1281,7 +1282,7 @@ Token-Saving Rules (0-10):규칙·제약·금기 형식 (decision-shortening)
 Distilled Wisdom (0-10):  압축된 원칙 · 토큰 대비 정보 밀도
 ```
 
-**보존 이유**: title/description 자동 생성에 Codex call 을 재사용 + 내부 품질 관측용.
+**보존 이유**: title/description 자동 생성에 Claude call 을 재사용 + 내부 품질 관측용.
 UI 에서는 제거 (DiscoveryPanel ScoreLine 카드 삭제 · LibraryPage 4축 정렬 옵션 없음).
 
 **Discovery UX · 축하 톤 (유지)**
@@ -1361,7 +1362,7 @@ fallback 순서:  preferred_stack (if set) → auto-inferred → no filter
 │ └─────────────────────────────────────────────────────────────────┘│
 │                                                                     │
 │ ┌─────────────────────────────────────────────────────────────────┐│
-│ │ [format-icon]  Codex-saas-cursorrules                👏 14  [→]││
+│ │ [format-icon]  claude-saas-cursorrules                👏 14  [→]││
 │ │                by @minji · Vibe Engineer                          ││
 │ │                Turn Cursor into a senior SaaS engineer …          ││
 │ │                #tune-ai  #cursor  #saas                           ││
@@ -1390,7 +1391,7 @@ URL: /library?t=week&intent=build-feature&format=mcp&tool=cursor&match=stack
                 ├ t: today|week|month|all       (default week)
                 ├ intent: all|build-feature|connect-service|tune-ai|start-project
                 ├ format: all|mcp|ide-rules|skill|rules|prompt|scaffold|recipe
-                ├ tool:   any|cursor|Codex|windsurf|cline|continue
+                ├ tool:   any|cursor|claude|windsurf|cline|continue
                 └ match:  stack (boolean)
 ```
 
@@ -1490,17 +1491,17 @@ V1 Phase A · P9a (2026-04-24 · 이 AGENTS.md 업데이트)
   ✅ 시간 축 스펙 (Today/Week/Month/All · §15.1.9)
 
 V1 Phase B · P9b (코드 변경)
-  ☐ Migration: md_library.intent 컬럼 추가 · 기존 행 backfill (format→intent 휴리스틱)
-  ☐ Migration: md_library_feed 뷰에 downloads_week / applications_week 집계 추가
-  ☐ LibraryPage grid → row list · Intent chip strip + 시간 토글 + Tool/Format 사이드 필터
-  ☐ LibraryPackRow.tsx 컴포넌트 (format icon + title + author + tldr + tags + stats + 우측 액션)
-  ☐ URL query param 상호작용 (?t=week&intent=build-feature&format=mcp&tool=cursor&match=stack)
-  ☐ DiscoveryPanel: Intent 선택 필수 입력 추가 · 기본값 build_feature
-  ☐ LibraryDetailPage 헤더에 Intent 배지 · 나머지는 유지
+  ✅ Migration: md_library.intent 컬럼 추가 · 기존 행 backfill (format→intent 휴리스틱)
+  ✅ Migration: md_library_feed 뷰에 downloads_week / applications_week 집계 추가
+  ✅ LibraryPage grid → row list · Intent chip strip + 시간 토글 + Tool/Format 사이드 필터
+  ✅ LibraryPackRow.tsx 컴포넌트 (format icon + title + author + tldr + tags + stats + 우측 액션)
+  ✅ URL query param 상호작용 (?t=week&intent=build-feature&format=mcp&tool=cursor&match=stack)
+  ✅ DiscoveryPanel: Intent 선택 필수 입력 추가 · 기본값 build_feature
+  ✅ LibraryDetailPage 헤더에 Intent 배지 · 나머지는 유지
 
 V1 (결제·공유·직접 업로드)
-  ☐ Stripe 결제 flow (V1 런칭 필수 · 등록비와 같이 배포 · 금액은 INTERNAL.md §1)
-  ☐ Codex Skills 멀티파일 번들 zip 업로드·다운로드
+  ✅ Stripe 결제 flow (V1 런칭 필수 · 등록비와 같이 배포 · 금액은 INTERNAL.md §1) — Live mode + webhook + founder pricing 가동 (2026-05-09)
+  ☐ Claude Skills 멀티파일 번들 zip 업로드·다운로드
   ☐ Variable substitution preview (apply 시 실시간 diff)
   ☐ Share card: "내 artifact 가 N개 프로젝트 졸업시켰다" X/LinkedIn 카드
   ☐ Top Contributors 랭킹 페이지 (reputation · adoption 기반)
@@ -1536,7 +1537,7 @@ V1.5 (Bundle 큐레이션 + 더 파고들기)
 
 ### 15-C.0 Positioning
 
-**바이브코딩 사용자가 사는 곳 = 터미널·Cursor·Codex.** commit.show 의
+**바이브코딩 사용자가 사는 곳 = 터미널·Cursor·Claude Code.** commit.show 의
 Audit 엔진을 웹 버튼 뒤에만 두면 이들의 AI-coding iteration 루프 안에 못
 들어간다. CLI 는 Audit 을 **에이전트의 개발 루프 한 턴**으로 끌어들인다.
 
@@ -1580,7 +1581,7 @@ commitshow audit     [<target>] [--refresh] [--json] [--watch]
   Rate limits (anonymous):
     · IP cap          20/day (authed via Supabase anon key)
     · per-URL         5/day  (defends against same-repo billing abuse)
-    · global          800/day (caps total Codex spend)
+    · global          800/day (caps total Claude spend)
   Cache hit (< 7d) returns immediately, no rate cost.
 
 commitshow submit    [<target>]
@@ -1591,7 +1592,7 @@ commitshow submit    [<target>]
 commitshow install   <pack-id | @creator/pack-slug>
   Download a Library Pack (§15) into the cwd. For MCP/IDE/Project Rules
   formats it writes the canonical file location (.cursorrules /
-  ~/.Codex/skills/<name>/ / etc.). Runs the `{{VARIABLES}}` substitution
+  ~/.claude/skills/<name>/ / etc.). Runs the `{{VARIABLES}}` substitution
   prompt locally so no secrets leave the machine.
 
 commitshow status
@@ -1646,7 +1647,7 @@ commitshow whoami
 **Content contract** (decided 2026-04-25):
 - Strengths / Concerns = **3 strengths + 2 concerns** (`rich_analysis.strengths[0..2]` + `rich_analysis.concerns[0..1]`). 5+3 풀 리스트는 웹에만.
 - 비교 축 = **self-delta only** (`score_total_delta` vs parent snapshot). Peer-vs-peer drama 는 V1.5+ 이후 (비교 오류 리스크).
-- `audit` 실행 때마다 `.commitshow/audit.md` 에 동일 내용을 markdown 헤더 + 불릿 포맷으로 저장 → Codex/Cursor 가 다음 턴 읽을 수 있게.
+- `audit` 실행 때마다 `.commitshow/audit.md` 에 동일 내용을 markdown 헤더 + 불릿 포맷으로 저장 → Claude/Cursor 가 다음 턴 읽을 수 있게.
 
 ### 15-C.3 Data contract
 
@@ -1695,12 +1696,13 @@ V1 (완료 2026-04-25)  · packages/cli/ 구현 · v0.1 read-only (audit · stat
 V1 후반      · `/cli/link` 웹 페이지 + device-flow 서버 엔드포인트 (Edge Function)
 V1.5 런칭    · @commitshow/cli v0.2 npm 공개 · login · submit · --watch · CI 게이팅
               · X 런칭 포스트 실탄 (터미널 스크린샷 3장) · README 에 `npx commitshow audit` demo GIF
-V1.5 후      · `install <pack>` 구현 · MCP 서버 버전 (§15-C.6 future)
+V1.5 후      · `install <pack>` 구현 (MCP 서버는 V1 에 이미 라이브 · §15-C.6 참조)
 
 V1.5 전환 조건:
-  ☐ Season-end 엔진 (P8) 완료 — 랭킹이 실시간 의미를 가지려면 필요
-  ☐ Stripe 결제 (P7) 완료 — paid auditions 가 CLI 에서도 가능해야
-  ☐ OAuth flow (P7) 완료 — device-flow 가 Supabase Auth 에 붙어야
+  ✅ Season-end 엔진 core 완료 — pg_cron + ladder mv/streak/milestone 계열 라이브
+  ✅ Stripe 결제 (P7) 완료 — paid auditions / credits 결제 flow 라이브
+  ✅ OAuth flow (P7) 완료 — Google + X + GitHub + LinkedIn wired
+  ☐ V1.5 전환 전 검증 — Hall of Fame SSR · Scout 티어 OR 승급 · CLI device-flow polish
 ```
 
 ### 15-C.7 Agent contract — `--json` (v0.1 이미 라이브)
@@ -1713,7 +1715,7 @@ V1.5 전환 조건:
 └──────────────┘               └───────┬──────┘
                                        │ jq / parse
                                        ▼
-      Codex · Cursor · Windsurf · AutoGPT · n8n · Zapier
+      Claude Code · Cursor · Windsurf · AutoGPT · n8n · Zapier
       GitHub Actions · crewAI · LangChain · bash · Python · Go …
 ```
 
@@ -1740,11 +1742,13 @@ band=$(echo "$json" | jq -r .score.band)
 # 에이전트 가 concerns[0].bullet 읽고 edit → re-audit → band 체크 반복
 ```
 
-### 15-C.6 Future (post V1.5)
+### 15-C.6 MCP 서버 (V1 라이브 · 2026-05-10)
 
-- **MCP 서버** — Codex Desktop / Cursor 가 commit.show 를 tool 로 호출 ("run audit on this repo" · "fetch my standings"). 우리 Library 자체가 MCP Config 아티팩트를 많이 가지고 있어 생태계 정합 강함
-- **공개 REST API** — CLI/MCP 위의 공통 레이어. rate-limit + auth + metered billing 설계 필요 (V2+)
-- **Watch mode** — `commitshow audit --watch` · 파일 변경 감지 → commit → audit 자동 반복 (개발 루프 순환 가속)
+- ✅ **MCP 서버 라이브** — `commitshow-mcp@0.1.0` npm 배포 완료 · `npx -y commitshow-mcp@latest` · 3 tools: `audit_repo` (live audit · md/json), `project_status` (cached snapshot), `fetch_docs` (llms.txt). Claude Desktop · Cursor · Cline · Windsurf 모두 3-line `mcpServers` config 로 설치. stdio shim · `https://api.commit.show/audit` REST 위에 얇게 얹힘. 소스: `/Users/hans1/commitshow-cli/mcp/`
+- ✅ **공개 REST API** — `https://api.commit.show/audit` 라이브 · CLI · MCP · 외부 통합 (Gemini · ChatGPT · n8n · Zapier · curl) 공통 레이어
+- ☐ **Watch mode** — `commitshow audit --watch` · 파일 변경 감지 → commit → audit 자동 반복 (V1.5+)
+- ☐ **Anthropic 공식 MCP 레지스트리 등재** — modelcontextprotocol/servers 커뮤니티 리스트 PR (V1 launch press 패키지)
+- ☐ **Cursor 공식 파트너 배치** — Cursor Directory MCP 추천 슬롯 (V2)
 
 ---
 
@@ -1774,6 +1778,137 @@ band=$(echo "$json" | jq -r .score.band)
 
 ---
 
+## 15-E. URL Fast Lane · 두 lane 분리 진입 (spec 2026-05-09)
+
+### 15-E.0 배경
+
+지금까지 audit 진입은 **GitHub URL 필수** (web /submit) 또는 **CLI walk-on** (`commitshow audit github.com/owner/repo`). 둘 다 **repo 가 있어야** 한다는 전제. 결과적으로 두 가지 사용자가 빠진다:
+
+1. **closed-source SaaS 파운더** — repo 비공개. 우리한테 들어올 길이 없음. 바이브코더 모수의 절반 이상이 closed-source SaaS.
+2. **"이 사이트 audit 해봐" 의 시니어 X 시드** — gstack `/browse` 가 잡고 있는 viral surface. 남의 SaaS URL 붙여넣기 → 결과 share. CLI walk-on 의 site 버전.
+
+### 15-E.1 두 lane 의 명확한 분리
+
+```
+┌─ Fast lane (URL only) ────────────────────────────┐  ┌─ Full lane (Repo + Brief) ──────────────────────┐
+│ entry: 도메인 URL 한 줄                             │  │ entry: GitHub URL + Live URL + Brief Phase 1   │
+│ probe: Lighthouse + Live + multi-route + meta      │  │ probe: 모든 것 (repo 까지)                       │
+│        + (V1.5) Playwright deep probe              │  │                                                 │
+│ ceiling: partial (URL signals only · /50 cap)      │  │ ceiling: 50 / 50 + 10 soft = 62                │
+│ status: 'preview' (CLI walk-on 과 동급)              │  │ status: 'active'                                │
+│ creator_id: NULL (anonymous)                        │  │ creator_id: 등록 회원                            │
+│ ladder/HoF: ❌ 등재 안 함                           │  │ ladder/HoF: ✅                                  │
+│ 자동 트윗: ❌ (§18-B.4 게이트 그대로)                │  │ 자동 트윗: ✅ (score ≥ 85)                      │
+│ share card: ✅ "Audited on commit.show" 워터마크     │  │ share card: ✅                                  │
+│ rate limit: preview_rate_limits 재사용              │  │ 24h cooldown · resubmit 무료 · 결제 게이팅       │
+│ 비용: ~$0.005 (Tier A) / ~$0.02 (Tier B)            │  │ 등록비 (INTERNAL.md §1)                          │
+└────────────────────────────────────────────────────┘  └─────────────────────────────────────────────────┘
+```
+
+**Cross-link**: Fast lane 결과 화면 하단에 **"Claim this audition · Upgrade to full audit"** CTA → owner verify 후 Full lane 으로 승격.
+
+### 15-E.2 Tier A · multi-route probe (V1 · 인프라 0)
+
+Edge Function 안 fetch 만으로 sitemap + homepage `<a href>` → 같은 origin internal routes 병렬 probe. Live URL Health 슬롯이 homepage 단일 200 만이 아니라 multi-route reachable rate 까지 반영하도록 격상. 정확한 fold-in 임계값과 fallback 결합 로직은 **`INTERNAL.md` §10** 참조.
+
+`routes_health.broken_paths` 는 Claude evidence prompt 의 strengths/concerns 입력으로 surface — broken 경로가 있으면 자동 concern bullet.
+
+### 15-E.3 Tier B · Playwright deep probe (V1 라이브 · 2026-05-09)
+
+**라이브 구성**:
+- ✅ post-hydration HTML (Cloudflare Browser Rendering `/content`) · meta tags UNION 회수 + 봇 wall 우회 + hydration framework 감지
+- ✅ 런타임 console error · network 실패 (Lighthouse `audits[]` 마이닝 · 추가 비용 0)
+- ⏸️ 스크린샷 (`ENABLE_SCREENSHOT=false` 디폴트 · CF free tier 한도 보호 · paid 전환 시 활성화)
+
+**점수 fold-in**: console_clean + network_clean 신호로 +2pt 추가 슬롯 · URL Fast Lane + 회원 repo audit 둘 다 적용. 정확한 슬롯 매핑·임계값·LH audit id mapping 은 **`INTERNAL.md` §10**.
+
+**비용 게이팅**:
+- URL Fast Lane (`!github_url && live_url`) → Tier B 발동
+- Full lane (회원 repo audit) → Tier B **발동 안 함** (CF budget 보호 · repo evidence 충분)
+
+**Rate limit / fallback**: CF 한도 hit 시 graceful → Tier A only fallback · audit 끊기지 않음. 정확한 한도 숫자·게이팅 동작은 INTERNAL.md §10. 트래픽 늘면 **Workers Paid $5/mo** 업그레이드 → 60× 더 → screenshot 자동 활성.
+
+### 15-E.4 Abuse defense · "남의 URL 마구 넣기" 처리
+
+**원칙**: CLI walk-on 과 동형 패턴. 별도 신규 디펜스 거의 없음.
+
+| 위협 | 디펜스 |
+|---|---|
+| 남의 SaaS 마구 audit | `status='preview'` · `creator_id IS NULL` · ladder 등재 X · 자동 트윗 X (§18-B.4 게이트) |
+| 비용 폭주 | `preview_rate_limits` 재사용 · IP/Domain/Global 3-tier (정확 숫자는 INTERNAL.md §10) · 7-day cache |
+| Owner 동의 없는 점수 공개 | share card 워터마크 + `social_share_disabled` 토글 · **+ DNS TXT opt-out** (아래) |
+| 점수 게이밍 / 반복 audit | Tier B Playwright 비용은 owner verify 후만 (Fast lane 은 cheap probe 만) |
+| 도메인 owner 글로벌 거부 | `_commitshow.<domain> TXT "audit=no"` lookup → 발견 시 fetch 시작 전 거부. **gstack 류 대비 차별 채널** |
+
+### 15-E.5 Owner claim flow — 정책 A · NOT IMPLEMENTED (2026-05-09 결정)
+
+**원칙**: URL 만으론 소유 verify 불가능 → claim 자체가 어뷰징 벡터. anyone-can-paste-anyone 모델에서 "claim" 버튼은 누가 먼저 누른 사람 차지가 됨. 따라서 V1 은 claim flow **빌드 안 함**.
+
+**대신**: URL audit 결과의 primary CTA = "Audition your repo →" → 회원 본인이 자기 GitHub repo 가지고 풀 lane (/submit) 으로 직접 들어감. URL audit 의 walk-on row 와 회원의 풀 audit 은 별개 entity 로 둠.
+
+V2 후보 (verify 인프라 갖춰지면):
+- DNS TXT `_commitshow.<domain>` = `<token>` 검증 후 closed-source SaaS 정식 등재
+- Stripe payment + 사이트 owner email confirmation
+- 그 전엔 walk-on row 는 익명 evidence 로만 존재 · 90일 후 auto-purge 후보 (V1.5+)
+
+### 15-E.6 UI 분리
+
+**Web /submit** 두 진입 카드:
+- **Audition with repo →** (기본 · gold CTA · "Full audit · ladder · graduation track")
+- **Quick audition with URL →** (보조 · 작은 outline 카드 · "Partial audit · share-only · upgrade later")
+
+**CLI** 신규 subcommand:
+- `commitshow audit <github-url>` (기존 · full 또는 walk-on)
+- `commitshow audit <site-url>` (신규 · URL fast lane · "site audit · partial cap")
+- 자동 감지: `github.com` host → repo path · 그 외 → site fast lane
+
+### 15-E.7 Phasing
+
+```
+V1 (지금)
+  ✅ Tier A multi-route probe (Edge Function 추가 · 인프라 0)
+  ✅ /submit 두 카드 분리 + Web URL fast lane 진입
+  ✅ CLI auto-routing (host=github.com → repo · 그 외 → fast lane)
+  ✅ preview_rate_limits rate-limit wiring (anon 3/IP/day · authed 10/IP/day · CF free tier 보호)
+  ✅ Live URL Health 슬롯 multi-route reachable rate fold-in
+  ☐ DNS TXT opt-out lookup (cheap · audit 진입점에서 1회)
+  ✅ Hero URL hook + URL fast lane proof surface
+       · URL lane 은 partial 명시 별표/배지로 시각 구분 (cap ~32/50 → ~64 종합)
+
+V1 후반 · Private repo 진입로 (closed-source 친화)
+  ☐ commit.show Auditor GitHub App
+       · scope: metadata:read · contents:read · pull_requests:read 만
+       · user 가 selected repositories 로 audit 받을 repo 만 선택
+       · installation token 1h short-lived · 폐기 후 캐시 X
+       · github.com/apps/commitshow-auditor
+  ☐ commitshow audit --local (CLI local mode)
+       · 본인 머신에서 signals 추출 (file tree · package.json · tests/ · CI · LICENSE · README · lockfile)
+       · 소스코드 자체는 서버 미전송 · JSON 시그널 + Brief 만 POST
+       · Lighthouse · Live URL 만 서버 probe
+       · "내 회사 private 코드 절대 외부 안 나감" 보장 — closed-source SaaS 1순위
+
+V1.5
+  ✅ Tier B Playwright deep probe 모듈 (Cloudflare Browser Rendering · post-hydration HTML · meta tags UNION)
+  ☐ Owner claim flow (GitHub OAuth path 우선)
+  ☐ ProjectDetail 에 screenshot evidence (정책 B no-screenshot 으로 V1 보류)
+  ☐ Production Maturity 의 console_clean / network_clean +2 signal
+
+V2
+  ☐ DNS TXT verify 기반 closed-source 등재 (repo 없이 정식 ladder)
+  ☐ 인터랙션 probe (auth flow click-through · 부작용 위험으로 보류)
+```
+
+### 15-E.8 GitHub OAuth · PAT 비추 사유 (선택지 거름)
+
+| 거른 옵션 | 사유 |
+|---|---|
+| **GitHub OAuth `repo` scope** | 사용자의 **모든** private repo read 권한 — 우리가 audit 안 한 나머지에도 접근. privacy 망. selected repositories 같은 세분화 없음 |
+| **PAT paste** | 사용자 5단계 설정 (Settings → Developer → Tokens → 권한 선택 → 저장 → 우리 form 에 paste) · token leak 시 광범위 피해 |
+
+→ 둘 다 **GitHub App 의 inferior 버전** · 채택 X.
+
+---
+
 ## 16. 개발 로드맵 (v2)
 
 ### 16.1 완료 (V0 · V0.5)
@@ -1786,7 +1921,7 @@ V0:
   ✅ Cloudflare Pages 배포 (GitHub main 자동 빌드 · push 만으로 반영)
   ✅ DB 스키마 v1 (11 tables + 4 views)
   ✅ Supabase Auth (Email) · members 자동 생성 트리거
-  ✅ 분석 파이프라인 Edge Function (PageSpeed + GitHub + Codex + 점수)
+  ✅ 분석 파이프라인 Edge Function (PageSpeed + GitHub + Claude + 점수)
 
 V0.5 (리브랜딩 · 기본 UX 완성):
   ✅ 등록 gate 로직 (영구 3회 무료 · 4회차부터 유료 · 금액은 INTERNAL.md §1)
@@ -1847,18 +1982,18 @@ Creator Community 4 메뉴 (P4 · V1 Day 1 · 완료)
 
 Library v2 · Intent-first + Trending UX (P9)
   ✅ P9a · AGENTS.md §15 spec 재정렬 (Intent primary · Format 격하 · 시간 축 · list layout)
-  ☐ P9b · Migration: md_library.intent 컬럼 + md_library_feed 시간 윈도우 집계
-  ☐ P9b · LibraryPage row list + Intent chip strip + 시간 토글
-  ☐ P9b · LibraryPackRow 컴포넌트 · URL query param 와이어
-  ☐ P9b · DiscoveryPanel Intent 입력 + LibraryDetailPage Intent 배지
+  ✅ P9b · Migration: md_library.intent 컬럼 + 4 카테고리 enum (build_feature · connect_service · tune_ai · start_project)
+  ✅ P9b · LibraryPage row list + Intent chip strip + 시간 윈도우 토글 (Today/Week/Month/All)
+  ✅ P9b · LibraryPackRow.tsx · URL query param 와이어 (?intent=...&t=week&format=...&tool=...&match=stack)
+  ✅ P9b · DiscoveryPanel Intent 입력 + LibraryDetailPage Intent 배지 + INTENT_TONE 색상
 
 3분 소화 UX · 기타 (P6)
-  ☐ 이번 주 하이라이트 카드 (Top 3 변화 · Audit 요약 자동 생성)
+  ✅ 감정 태그 코멘트 입력 프리셋 (🙌🎯🔥🤔💡 · §2) — EmotionTagRow.tsx + ProjectComments.tsx + ProjectActionFooter.tsx
+  ✅ 이번 주 하이라이트 카드 (ThisWeekHighlight · top_movers_week RPC bookend 방식 · 누적 climb 표시 · 2026-05-07)
   ☐ 푸시 위젯 Vote (알림에서 앱 안 열고도 투표)
   ☐ 맞춤 다이제스트 (Creator/Scout 별 주간 이메일/푸시 요약)
-  ☐ 감정 태그 코멘트 입력 프리셋 (🙌🎯🔥🤔💡 · §2)
-  ☐ 리그 리더보드 비주얼 (X=Audit 점수 · Y=Scout 점수 · 2D 지도)
-  ☐ 궤적 공유 카드 (3주 애니메이션 GIF 자동 생성 · X/LinkedIn 바이럴)
+  ✅ 리그 리더보드 비주얼 (LeaderboardPage · X=Audit Y=Scout scatter + 4-quadrant stat strip · /leaderboard · 2026-05-07)
+  ✅ 궤적 공유 카드 (og?kind=trajectory SVG/PNG + auto-tweet kind=trajectory · encore production INSERT 자동 트리거 · 2026-05-07)
 
 Vote 트리거 마무리 (P2 후속)
   ✅ 자기 앱 Vote 금지 DB 트리거 (P1 migration)
@@ -1868,23 +2003,49 @@ Vote 트리거 마무리 (P2 후속)
 
 Brand verb 전역 교체 (P5)
   ✅ ProjectDetailPage · ApplaudButton · ProjectActionFooter (emoji CTA + Audition 톤)
-  ☐ Hero CTA: "Score your project →" → "Audition your product →"
-  ☐ Nav "Apply" 버튼 · Submit 플로우 카피 전반 Audition 통일
-  ☐ Codex API 프롬프트에 "Audit report" / 영어 prose "AI" 제거 명시
-  ☐ "AI 분석 리포트" 잔존 카피 전수 검색·치환
+  ✅ Hero CTA: "Audition your product →" — Hero.tsx · BackstagePage · LadderPage · ProfilePage · SubmitPage 전부 통일
+  ✅ Nav "Apply" 버튼 · Submit 플로우 카피 Audition 통일
+  ✅ Claude API 프롬프트에 "Audit report" / 영어 prose "AI" 제거 명시 (analyze-project prose-field 룰 forbidden 처리 · 2026-05-07 audit)
+  ✅ 사용자 노출 "AI" 카피 잔존 점검 완료 — 우리 엔진 지칭 0건, Cursor/Claude/Lovable 등 사용자 도구 맥락만 예외 허용
 
 결제·OAuth (P7 · V1 런칭 필수)
-  ☐ Supabase Auth Google + X OAuth — 도메인 확정 후
-  ☐ Stripe 결제 flow (등록비 + Library 유료 tier · 금액은 INTERNAL.md §1)
+  ✅ Supabase Auth · Google + X(twitter) + GitHub + LinkedIn(oidc) 4종 OAuth — auth.tsx · AuthModal.tsx · sync_x/github/linkedin_identity 트리거 모두 wired
+  ✅ Stripe 결제 flow — Edge Functions create-checkout-session + stripe-webhook · audition fee + paid_audits_credit + founder pricing 모두 라이브
+  ☐ ballot_wallets 결제 연동 (월 Vote 추가 구매 — V1.5 후보)
 
-리그 종료 엔진 (P8 · 크론 최후 정책 · V1 끝)
-  ☐ Season-end engine — §6.2 %-based 상위 20% 자동 등급 전환 (Supabase Cron)
-  ☐ Scout 티어 OR 승급 (votes.is_correct 집계 · 적중률 경로)
-  ☐ Hall of Fame 자동 등재 · SSR
-  ☐ Graduation Day 영상 자동 게재 (@commitshow)
-  ☐ Creator 환급 페이아웃 (rail · 세무 양식은 INTERNAL.md §1)
-  ☐ Build Log 자동 씨앗 (recommit + Audit 변화 + Brief Phase 2 → 초안)
+리그 종료 엔진 (P8 · V1 끝)
+  ✅ Season-end engine — supabase/migrations/20260504_season_end_engine.sql · pg_cron 활성
+  ✅ ladder_streaks · ladder_milestones · ladder_rankings_mv 5분 refresh (20260504+20260501 마이그레이션)
+  ☐ Scout 티어 OR 승급 (votes.is_correct 집계 · 적중률 경로 · 검증 필요)
+  ☐ Hall of Fame 자동 등재 · SSR (시즌 종료 시점 트리거 검증 필요)
+  ☐ Graduation Day 영상 자동 게재 (@commitshow) — 미구현
+  ☐ Creator 환급 페이아웃 (rail · Wise/Trolley 연동 · 세무 양식은 INTERNAL.md §1) — 미구현
+  ☐ Build Log 자동 씨앗 (recommit + Audit 변화 + Brief Phase 2 → 초안) — 미구현
 ```
+
+### 16.2.1 V1 잔여 항목 (2026-05-09 sync)
+
+2026-05-06 audit 당시 미진행으로 분류했던 P6/P5 항목 중 핵심 5개는 2026-05-07에 대부분 완료됐다. V1 launch critical 에 남은 것은 푸시 위젯 Vote / 맞춤 다이제스트가 아니라 P8 검증·운영 자동화 쪽이다.
+
+**Code 작업 (남은 P6 sub-items)**
+1. ✅ 이번 주 하이라이트 카드 — ThisWeekHighlight · top_movers_week RPC bookend 방식
+2. ✅ 2D 리더보드 — LeaderboardPage · X=Audit / Y=Scout scatter
+3. ✅ 궤적 공유 카드 — og?kind=trajectory SVG/PNG + auto-tweet kind=trajectory
+4. ☐ 푸시 위젯 Vote — V1 launch 무리 · V1.5 보류 가능
+5. ☐ 맞춤 다이제스트 (주간 이메일) — V1 launch 무리 · V1.5 보류 가능
+
+**잔존 코피 정리 (P5 마무리)**
+6. ✅ Claude API 프롬프트의 "AI" 잔존 / "AI 분석 리포트" 잔존 점검 — analyze-project prose-field 룰 forbidden 처리
+7. ✅ 사용자 노출 영역 전체 audit — 우리 엔진을 "AI"로 부르는 케이스 0건 확인
+
+**P8 운영 자동화**
+8. Hall of Fame SSR · Scout 티어 OR 승급 동작 검증 (이미 migration 들어가있어서 검증만)
+9. Creator 환급 페이아웃 (Wise/Trolley) — V1.5 보류 가능
+10. Build Log 자동 씨앗 — V1.5 보류 가능
+
+**Acquisition 트랙 (별도 · §17 신설 후보)**
+11. Outreach loop 4채널 잔여 (cursor forum · claude-code Discord · aider Discord · MCP Discord) — 사용자 매뉴얼
+12. audit-action v1.0.1 Marketplace publish click — 아이콘 색 적용
 
 ### 16.3 V1.5 — Library Scaffold · Community 성숙 · Bundle 큐레이션 · CLI
 
@@ -1904,10 +2065,10 @@ Brand verb 전역 교체 (P5)
   ☐ Asks 매칭 → 공동 Creator 모드
   ☐ 합성 생성 댓글·게시물 필터 (Perplexity + Burstiness) — 사용자 문구에선 "AI" 금칙이지만 내부 기술 용어로는 허용
   ☐ 구인 마켓 (졸업 배지 기반 채용 필터)
-  ☐ Season Partner (툴사 스폰서십 — Cursor · Codex · Lovable 등)
+  ☐ Season Partner (툴사 스폰서십 — Cursor · Claude · Lovable 등)
   ☐ Community post Comment 시스템 (B)
   ☐ ProfilePage Community 피드 탭 통합 (B)
-  ☐ MCP 서버 (§15-C.6 · post V1.5)
+  ✅ MCP 서버 (§15-C.6 · V1 라이브 · 2026-05-10 · commitshow-mcp@0.1.0 npm)
 ```
 
 ---
@@ -1980,9 +2141,104 @@ X → commit.show:
 | 앱 상세 타임라인 | X 포스트 자동 수집 | 방문자 체류 증가·발견 경로 확장 |
 | 졸업식 영상 공식 게재 | 졸업 확정 | 미디어 연계·외부 노출 |
 
+### 18-B.4 Auto-tweet 파이프라인 (V1 · 2026-05-06 ~ 05-07 구현)
+
+**목적**: 어떤 프로젝트가 audit 후 score≥85 를 찍으면 공식 @commitshow 계정에서 자동 트윗 발송. CLI 든 웹이든 외부 누군가 우리 audit 을 돌렸다는 사실 자체가 marketing 자산이고, 무대(공식 X 타임라인)에 자동으로 올라간다.
+
+**4-gate eligibility** (auto-tweet Edge Function 안에서 enforce · 2026-05-07 consent pivot):
+1. `score_total >= 85`
+2. `projects.status != 'preview'` — **플랫폼에서 정식 audition 한 회원 프로젝트만**. CLI walk-on (status='preview') 은 익명 제3자 audit 이라 brand 무대 게시 동의가 없음 → 점수 reveal 만 하고 트윗 X. 공식 @commitshow 피드 = 자발적으로 무대에 오른 회원의 진짜 audition. (이전 설계는 거꾸로 walk-on 만 트윗했음 — consent 빈 곳이라 5-07 에 뒤집음)
+3. **14-day cooldown**: `auto_tweets` 테이블에 같은 project 의 `posted_at > now() - 14d` 행이 있으면 skip
+4. `projects.social_share_disabled = false` (Creator 본인이 자기 audition 의 자동 트윗을 끄고 싶을 때 토글)
+
+**4 templates · 안정 hash 로테이션**:
+- 4 템플릿 (a/b/c/d) · `djb2(${projectId}:${score}) % 4` 로 결정 → 같은 project 가 같은 점수로 두 번 검사돼도 같은 카피 (재현성)
+- 모든 템플릿이 OG PNG 카드 + project URL 동봉 → X timeline 에서 카드 unfurl
+
+**OG PNG 카드** (`og-png` Edge Function · resvg-wasm + JetBrains Mono):
+- 1200×630 PNG · ANSI Shadow figlet score (BIG_DIGITS 6-row unicode block art) · 3-axis bars + top strength/concern + scope chip
+- 항상 골드 (`#F0C040`), 점수 박스 frame 없음, 중앙 정렬 (사용자 피드백 반영 · §4 톤 정합)
+- X 가 SVG 거부하므로 server-side SVG→PNG · 5-min edge cache · `?t=` cache-bust 지원
+- 콜드 ~3.5s · 워밍 1.6s
+
+**twitter:image meta wiring**:
+- `/functions/projects/_middleware.ts` 신설 — 기존 singular `/project/<slug>` 미들웨어가 못 잡던 plural+UUID 라우트 (`/projects/<uuid>`) 처리
+- HTMLRewriter + MetaRewriter 패턴으로 `og:image` / `twitter:image` 를 `https://tekemubwihsjdzittoqf.supabase.co/functions/v1/og-png?id=<id>&kind=tweet` 로 swap
+- 결과: 누구나 project URL 을 X 에 paste 만 해도 카드가 펼쳐진다
+
+**X API 호출 경로** — `send-tweet` 위임 (DRY):
+- auto-tweet 은 X API 직접 호출 X · 기존 `send-tweet` Edge Function 한테 `kind:'official'` 로 위임
+- `x_official_account` 테이블 (singleton) 의 access_token + refresh_token + scopes 재사용 · token expiry 60s 내 자동 refresh
+- `x_share_log` 의 dedupe_key 패턴 그대로 (`auto:${projectId}:${score}`) → 재시도 idempotent
+- send-tweet · auto-tweet · og-png · audit-preview 모두 `verify_jwt = false` · 함수 내부에서 자체 인증
+
+**트리거 위치**:
+- `analyze-project` 가 새 snapshot insert 한 직후 (initial / resubmit 만 · weekly cron 은 트윗 안 날림)
+- `EdgeRuntime.waitUntil(fetch(/auto-tweet, …))` · fire-and-forget · 사용자 응답 지연 0
+
+**DB 스키마** — `supabase/migrations/20260507_auto_tweets.sql`:
+```
+auto_tweets (id · project_id · posted_at · tweet_id · tweet_url ·
+             score_at_post · template_used · status · error_message · payload jsonb)
+projects.social_share_disabled boolean DEFAULT false
+```
+- service_role only (admin-tier · `tweet_url` 만 향후 public view 로 expose 가능)
+- 14-day cooldown 은 unique partial index 대신 Edge Function pre-INSERT SELECT 로 enforce (PG 가 date-bucket index 표현식을 IMMUTABLE 로 인정 안 함)
+
+**옵트아웃 UX**:
+- `projects.social_share_disabled` 토글 — 익명 walk-on 도 anyone-with-URL 로 끌 수 있음 (creator_id IS NULL 이면 어떤 authenticated 사용자든 끄기 허용 · friction 은 URL 자체)
+- ProjectDetailPage 푸터 버튼은 V1.5 후속 (현재는 RPC/SQL 로 토글 가능)
+
 ---
 
-## 19. Codex 작업 가이드
+## 18-C. GitHub 오픈소스 acquisition 트랙 (2026-05-05 ~ 05-07 시작)
+
+**문제 인식**: 우리 사용자(바이브코더)는 GitHub · Cursor · Claude Code · MCP · aider · continue 같은 도구 생태계 안에 산다. commit.show 도 거기로 들어가야 한다 — landing page 에 광고 띄우는 게 아니라.
+
+### 18-C.1 commitshow/audit-action (GitHub Action)
+
+- **위치**: `github.com/commitshow/audit-action` (v1.0.1 · separate repo)
+- **구조**: composite shell action — `npx commitshow@latest audit ... --json` 호출 후 score band 비교 · sticky PR comment (marker `<!--commitshow-audit-action-->`) · branding `gray-dark` (네이비 톤 · yellow 거부 후 톤 변경)
+- **Marketplace 등록**: v1.0.0 publish 완료 · v1.0.1 은 사용자 수동 publish click 대기 (§17 · API 없음)
+- **Pre-wired template**: `commitshow/template-saas-starter` (is_template=true) · `.github/workflows/audit.yml` 박힘 → fork 만 하면 audit-on-PR 즉시 동작
+- **Web AuditCiBlock** + CLI post-audit prompt: 사용자가 audit 결과 본 직후 "PR 마다 audit 돌리고 싶나?" CTA 제시 (initial 진입점이지만 사용자 매뉴얼 수동 적용 — passive marketplace 만으로는 부족)
+- **commit.show repo 자체 self-audit**: `.github/workflows/audit.yml` · 모든 PR 에 sticky comment · merge gate 는 X (현재 advisory)
+
+### 18-C.2 commitshow org page · `.github` 프로필
+
+- `github.com/commitshow/.github/profile/README.md` — org gateway · 5-repo table · Topics · Discussions · welcome post
+- 5 repos: `commitshow` (web/main) · `cli` · `audit-action` · `template-saas-starter` · `.github`
+- Topics 표준화 + Discussions 활성
+
+### 18-C.3 Tool 생태계 outreach loop
+
+5개 외부 repo / community 에 acquisition push (CEO 가 직접 게시 · 톤은 북미 원어민 · 과장 없음):
+
+| 채널 | 종류 | 상태 |
+|---|---|---|
+| `continuedev/continue` Discussions | GitHub Discussions | ✅ #12309 게시 완료 |
+| Cursor forum | 외부 forum | ☐ 드래프트 ready (`/tmp/commitshow-discussion-drafts/`) |
+| `claude-code` Discord | Discord | ☐ 드래프트 ready |
+| `aider` Discord | Discord | ☐ 드래프트 ready |
+| MCP Discord | Discord | ☐ 드래프트 ready |
+
+**모니터링** — `scripts/outreach-status.sh`: 5개 채널 reaction/reply 폴링 · age-aware heuristic ('5분 전 글에 0 reaction' 은 약한 시그널로 안 친다 · macOS TZ 보정 포함)
+
+### 18-C.4 awesome-list PR
+
+- ComposioHQ 류 awesome-list 들에 commit.show / audit-action 항목 PR — CI 가 카테고리 내 알파벳 순서 강제하므로 끝에 append 금지 · 정확한 위치 계산해서 삽입 (memory 기록됨)
+
+### 18-C.5 commit.show audit 정확도 보강 (acquisition 의 전제)
+
+외부에서 우리 audit 을 돌렸을 때 점수가 합당해야 게시·공유가 의미 있다. 그래서 같이 진행:
+- **Monorepo workspace auto-pick** (3-tier · §6 audit pillar) — Phase 0 explicit override (`--workspace`) → Phase 1 priority name (`apps/web` · `packages/<repo-name>` 등) → Phase 2 repo-name match with suffix strip (`.js` `.ts` `-js` `-ts` `.io` `.dev`) → Phase 3 absolute file count
+- **rootPaths preserved**: env_committed / lockfile / LICENSE / CI workflow 같은 root-level 시그널은 workspace shadow 후에도 root 경로로 검사 (path-shadow regression 회복 · supabase 점수 35→39 복구)
+- **scanned_scope 노출**: github_signals 에 어느 sub-app 을 봤는지 명시 → "vercel 95 · supabase 76" 식 점수 차이를 "우린 이 workspace 만 봤다" 로 변호 가능 (사용자 피드백: "수파베이스가 85 라는 게 사람들이 받아들이기 힘들거야 — 근거가 있어야")
+- **CLI `--workspace` flag**: `commitshow audit github.com/owner/repo --workspace apps/web` · 인라인 URL path (`github.com/owner/repo/tree/main/apps/web`) 도 자동 감지
+
+---
+
+## 19. Claude Code 작업 가이드
 
 ### 19.1 코드 작성 시 반드시 지킬 것
 
@@ -1997,7 +2253,7 @@ X → commit.show:
 8.  환경변수는 반드시 import.meta.env.VITE_* 형식
 9.  ALL UI strings MUST be American English. commit.show 는 미국 런칭 제품이다.
     - 버튼 라벨 · placeholder · 에러 메시지 · 툴팁 · 섹션 헤더 · 플로우 안내 · 배지 · 상태 — 전부 영어
-    - Codex API 프롬프트에도 "All prose fields MUST be American English" 명시
+    - Claude API 프롬프트에도 "All prose fields MUST be American English" 명시
     - 사용자 대화는 한글, 제품 UI 는 영어. 혼동 금지
     - 한글 리터럴 발견 시 리팩토링 중 즉시 영어로 교체
 10. 브랜드 verb (v2 · §1-A ⑥ · 4-29 통합 시도 후 5-01 분리 복구 · canonical 룰)
@@ -2014,11 +2270,11 @@ X → commit.show:
     - 내부 함수/상수 이름은 영향 없음 — UI 레이어만 통일
 11. **"AI" 단어 사용자 노출 금지** (§2 용어 금칙)
     - "AI analysis" / "AI score" / "AI feedback" / "AI 50%" / "AI evaluation" → **Audit / Audit report / Audit findings / Audit 50% / Technical audit**
-    - Codex API 프롬프트에도 출력에 "AI" 단어 안 나오게 명시 · 영어 prose 필드는 audit 계열로 통일
-    - 허용: Creator 의 빌드 맥락 설명 ("AI-assisted development" · "built with Cursor · Codex · Lovable") · 이건 바이브코딩 생태계 지칭이지 우리 서비스 지칭 X
+    - Claude API 프롬프트에도 출력에 "AI" 단어 안 나오게 명시 · 영어 prose 필드는 audit 계열로 통일
+    - 허용: Creator 의 빌드 맥락 설명 ("AI-assisted development" · "built with Cursor · Claude · Lovable") · 이건 바이브코딩 생태계 지칭이지 우리 서비스 지칭 X
     - 내부 코드·DB 컬럼·함수명엔 "ai" 사용 무관 (claude_insight 같은 기존 이름 유지)
 12. Rookie Circle 톤 (§1-A ⑤ 재확인)
-    - UI · 에러 · Codex 프롬프트 · 약관 전 레이어에서 "낙제·실패·탈락·Loser·Failed·미달" 금칙
+    - UI · 에러 · Claude API/Codex 작업 프롬프트 · 약관 전 레이어에서 "낙제·실패·탈락·Loser·Failed·미달" 금칙
     - "Rookie Circle · Try Again · Next audition · Retry · Next season" 만 허용
 13. Applaud vs Vote 분리 (§1-A ①)
     - Vote = 무거운 Forecast (티어별 월 권 · ×N 몰빵 · 졸업 Scout 30% 반영)
@@ -2052,13 +2308,14 @@ git add -A && git commit -m "..." && git push origin main
 ### 19.3 Supabase 테이블 업데이트 시
 
 ```
-1. supabase/schema.sql 수정 (migration 라인 추가)
-2. Supabase 대시보드 → SQL Editor 에서 실행
+1. 새 SQL 은 supabase/migrations/YYYYMMDD_description.sql 로 추가
+   (schema.sql 은 v1.8 baseline 유지 · 새 PRD delta 의 진실 소스로 쓰지 않음)
+2. Supabase 대시보드 SQL Editor 또는 scripts/run-migration.mjs 로 실행
 3. src/lib/supabase.ts 의 타입 업데이트
 4. 관련 쿼리·RPC 호출부 타입 의존 점검
 ```
 
-**v2 마이그레이션 주의**: applauds 테이블은 polymorphic 으로 전면 재설계 (§1-A ③ · §13.1). 기존 데이터는 product 타겟으로 백필 + season_id/weight/scout_tier 컬럼 DROP. RLS 정책도 자기 콘텐츠 금지 포함해서 재작성 필요.
+**v2 마이그레이션 주의**: applauds 테이블은 polymorphic 으로 전면 재설계 완료 (§1-A ③ · §13.1). `20260424_v2_prd_realignment.sql` 에서 user-confirmed 로 legacy applaud 데이터를 clear 하고 `season_id/weight/scout_tier` 구조를 제거했다. 이후 변경은 백필 가정 없이 새 migration 으로 누적한다.
 
 ---
 
@@ -2077,47 +2334,95 @@ git add -A && git commit -m "..." && git push origin main
 ✅ P5 (부분) ProjectDetail Audition/Audit 톤 · 이모지 CTA · ProjectActionFooter (fe56c41)
 ✅ P9a Library v2 spec — Intent-first + Trending list + 시간 축 (AGENTS.md §15 · commit ac3c9d1)
 ✅ hotfix · auditionStreak ap_events → activity_point_ledger (commit c6988bc)
+
+✅ 2026-05-09 V1 Stripe Live mode + Pricing terminology lock
+       · Stripe Live transition (sk_live_/whsec_live_ secrets · osascript dialog)
+       · 첫 cs_live_ 결제 ($49 founder) succeeded → refunded clawback test 정상
+       · payment_method_types ['card'] anti-pattern 제거 (commit 4896666)
+       · Idempotency key v3 · 5-min bucket (commit f6a33fe · post-refund retry fix)
+       · 6 user-facing surface "deposit/refund" → "credit/recoupable" (commit 024558a)
+       · INTERNAL.md §1.0 terminology lock 표
+✅ 2026-05-09 §15-E URL Fast Lane 풀스택 (wave 1-6 · commits c3bede7 ~ 30e04c4)
+       · audit-site-preview Edge Function (URL fast lane backend)
+       · deep-probe Edge Function (CF Browser Rendering · post-hydration HTML)
+       · Hero URL hook (try-before-signup funnel)
+       · Polish Score 26pt scale (URL_LANE_MAX 24→26 · runtime evidence slot)
+       · og:image fallback (Tier A + Tier B UNION · repo audits 도 적용)
+       · AuditShowcase 6-card grid (3-lane proof on landing)
+       · Rate limits anon 3/IP/day · authed 10/IP/day (CF free tier 60-120/day binding)
+       · 정책 A no-claim (URL audit 은 owner verify 불가능)
+       · 정책 B no-screenshot (CF free tier 보호 · ENABLE_SCREENSHOT=false 디폴트)
+✅ 2026-05-09 Tweet hashtag bundle 일원화 (commits ded5615 · 63b9d36)
+       · #commitshow + 3 related (#vibecoding #buildinpublic #devtools) 모든 share path
+       · 4 surfaces: auto-tweet (audit + trajectory) · shareTweet · userShareTemplate · CMO M draft
+       · kind-specific extra (#encore · #shipping · #milestone) 자동 추가
+✅ 2026-05-09 §15-E gameable detail INTERNAL.md §10 분리 (commit 8b35a9a)
+       · bot-block fallback signal logic · URL_LANE_MAX breakdown · LH bucket thresholds
+       · Polish×Maturity coupling 공식 · rate limit 정확 숫자 · LH audits[] mapping
+✅ 2026-05-09 Outreach loop drafts 재생성 (CEO target_audience 룰 반영)
+       · 5 channels (claude-code · cursor · aider · MCP · lovable) drafts
+       · Web URL primary CTA · CLI 는 secondary (초보 터미널 못 침)
+       · curiosity-first hook 전략 (URL 댓글로만 drop)
 ```
 
-### 20.2 진행 대기 (우선순위 순)
+### 20.2 진행 대기 (2026-05-06 audit 후 갱신 · §16.2.1 와 sync)
+
+§16.2 의 trackers 가 stale 한 줄 알고 있던 P5b · P7 · P8 · P9b 가 실제론 거의 다 끝나있었음 (Hero CTA 통일 · OAuth 4종 · Stripe · Season-end pg_cron · Library v2 row list 전부 라이브). 진짜 미진행:
 
 ```
-P5b · Brand verb 전역 마무리
-  Hero CTA "Score your project" → "Audition your product"
-  Nav Apply 버튼 · Submit 플로우 · 기타 카피 전반
-  Codex API 프롬프트에 "Audit" / "AI" 제거 명시
+P5 잔존 (사용자 노출 카피)
+  ✅ Claude API 프롬프트 "AI" 잔존 — analyze-project line 2631 의 prose-field 룰이 이미 forbidden 처리 (2026-05-07 audit)
+  ✅ 사용자 노출 "AI" 카피 잔존 — 전부 사용자 AI 도구 (Cursor/Claude/Lovable) 지칭 = §19 rule 11 예외 허용. 우리 엔진을 "AI" 라고 부르는 케이스 0건 확인
 
-P9b · Library v2 UI 실구현
-  md_library.intent 컬럼 migration + 기존 행 backfill
-  md_library_feed 뷰 · 시간 윈도우 집계 (downloads_week · applications_week)
-  LibraryPage grid → row list + Intent chip strip + 시간 토글
-  LibraryPackRow 컴포넌트 + URL query param 와이어
-  DiscoveryPanel Intent 입력 · LibraryDetailPage Intent 배지
+P6 잔존 (3분 소화 UX · 감정 태그는 ✅ 완료)
+  ✅ 이번 주 하이라이트 카드 (ThisWeekHighlight · top_movers_week RPC bookend 방식 · 누적 climb 표시 · 2026-05-07)
+  ✅ 2D 리더보드 (LeaderboardPage · X=Audit Y=Scout scatter + 4-quadrant 카운트 stat strip · /leaderboard · 2026-05-07)
+  ✅ 궤적 공유 카드 (og?kind=trajectory SVG/PNG + auto-tweet kind=trajectory · encore production INSERT 자동 트리거 · 2026-05-07)
+  ☐ 푸시 위젯 Vote — V1 무리 · V1.5 후보
+  ☐ 맞춤 다이제스트 — V1 무리 · V1.5 후보
 
-P6 · 3분 소화 UX
-  이번 주 하이라이트 카드 · X/Y 2D 리더보드 · 궤적 공유 카드
-  감정 태그 코멘트 프리셋 · 맞춤 다이제스트
+P8 잔존 (Season-end 운영 자동화)
+  ☐ Hall of Fame SSR · Scout 티어 OR 승급 동작 검증 (migration 박혀있음 · 검증만)
+  ☐ Creator 환급 페이아웃 (Wise / Trolley) — V1.5 후보
+  ☐ Graduation Day 영상 자동 게재 (@commitshow) — V1.5 후보
+  ☐ Build Log 자동 씨앗 (recommit + Audit 변화 + Brief Phase 2 → 초안) — V1.5 후보
 
-P7 · 결제·OAuth (V1 런칭 필수)
-  Supabase Auth Google + X OAuth
-  Stripe 결제 flow (audition fee + Library 유료 · 금액은 INTERNAL.md §1)
+P2 후속
+  ☐ ballot_wallets 기반 월 Vote 권 지갑 wiring (현재 monthly_votes_used 카운트만)
 
-P8 · Season-end 엔진 (크론 최후 · V1 끝)
-  §6.2 %-based 상대평가 자동 실행 · Scout 티어 OR 승급
-  Hall of Fame 자동 등재 · Graduation Day 영상 자동 게재
-  Creator 환급 페이아웃 (Wise / Trolley)
-  Build Log 자동 씨앗 (recommit + Audit 변화 + Brief Phase 2 → 초안)
+Acquisition 트랙 (어제 시작 · §17 신설 후보)
+  ✅ commitshow/audit-action GitHub Action + Marketplace 등록 (v1.0.1)
+  ✅ Web AuditCiBlock · CLI post-audit prompt
+  ✅ commitshow/.github org page · Topics · Discussions · welcome post
+  ✅ commitshow/template-saas-starter · is_template
+  ✅ continuedev/continue Discussion 게시 (#12309)
+  ☐ audit-action v1.0.1 Marketplace UI publish click — 사용자 1분
+  ☐ Outreach loop 잔여 4 채널 (cursor forum · claude-code Discord · aider Discord · MCP Discord) — 사용자 매뉴얼 + reception 톤 조정
+  ✅ SeizyC backup remote workflow scope (gh OAuth refresh로 해소 · 2026-05-07)
 
 Follow-up · 작은 정리
-  activity_point_ledger kind CHECK 에 audition_climb / audition_streak 추가
-  ProfilePage 에 Community 피드 탭
-  Community post Comment 시스템 (V1.5)
+  ☐ activity_point_ledger kind CHECK 에 audition_climb / audition_streak 추가
+  ☐ ProfilePage 에 Community 피드 탭
+  ☐ Community post Comment 시스템 (V1.5)
+  ☐ demo PR commitshow/commitshow#1 close (audit comment 검증 후)
 ```
 
 ---
 
 *이 파일은 프로젝트가 진행될수록 업데이트한다.*
-*마지막 업데이트: 2026-04-24 · **commit.show PRD v2** (통합 기획서 2026-04-19 + Creator Community 2026-04-23 기반 재정비 + §15 Intent-first/Trending UX)*
+*마지막 업데이트: 2026-05-09 (저녁) · **V1 Stripe Live mode 가동 + Pricing terminology lock + 첫 live charge 성공**:*
+*· Stripe Live transition · sk_live_/whsec_live_ secrets 등록 (osascript hidden-answer dialog · 채팅 평문 미노출) · 첫 cs_live_a1Qr $49 founder pricing 결제 successful → refund clawback test · webhook 양방향 정상 (succeeded → refunded → -1 credit trigger).*
+*· Stripe code hardening · stripe-best-practices skill audit 통과 · `payment_method_types ['card']` anti-pattern 제거 → dynamic payment methods 활성 (Apple Pay / Google Pay / Cash App / Naver Pay / Samsung Pay 자동 노출 · 미국 사용자엔 한국 method auto-hidden).*
+*· Idempotency key v2 → v3 · day-bucket → 5분 bucket 으로 narrow (post-refund 재결제 retry 시 dead session 캐시 collision 차단 · double-click 방지는 그대로).*
+*· Pricing terminology lock 2026-05-09 (CEO 지시 · 소비자보호 안전) · 모든 user-facing surface "refund/refundable/non-refundable/deposit/conditional refund" → "Encore credit · recoupable · non-recoupable" 일원화. Apple App Store ("App credits") + Steam Wallet + Steam Direct ("Recoupable Steam Direct fee") 패턴 차용. 6 surfaces: SubmitForm pricing breakdown · PaymentResultModal · TermsPage §7 (제목 "Fees and recoup") · RulebookPage 푸터 · create-checkout-session Stripe product description (영수증 노출) · pricing.ts type 필드 (deposit→credit). 약관 §7 본문엔 "it is not a refundable deposit" 명시 negative anchor 추가. 내부 DB/Stripe API 명칭 (charge.refunded · payments.refunded_at · awards_ledger 'refund' enum) 은 그대로 (사용자 미노출 · Stripe spec 일치 필요).*
+*· INTERNAL.md §1.0 신설 · terminology 금지/허용 표 + 근거 기록.*
+
+*이전 마지막 업데이트: 2026-05-09 (오전) · §15-E URL Fast Lane 풀스택 (audit-site-preview · deep-probe · Hero URL hook · Polish Score 26pt scale · runtime evidence slot · og:image fallback · AuditShowcase · rate limits 3/10 · 정책 A no-claim · 정책 B no-screenshot) + §15-E gameable detail INTERNAL.md §10 으로 이전*
+
+*이전 마지막 업데이트: 2026-05-07 · 토큰 사용량/효율 풀스택 V1 (audit_token_usage 테이블 · analyze-project Claude 응답 usage 캡처 · usage-ingest Edge Function · commitshow extract CLI subcommand · TokenReceiptForm UI · TokenEfficiencyPanel · /leaderboard/tokens · "Verified Claude Code" 만 V1 · vendor lock 인 Cursor/Lovable/Bolt 는 V1.5+) + Soft 404 SEO fix (NotFoundPage + sitemap canonicalization) + NEW AUDITS lane cream*
+*이전: 2026-05-07 trajectory 카드 풀스택 + ThisWeekHighlight bookend + LeaderboardPage quadrant strip*
+*이전 마지막 업데이트: 2026-05-06 · §16 / §20.2 backlog audit · 백로그가 실제 코드 상태와 어긋나있던 것 정리*
+*이전 마지막 업데이트: 2026-04-24 · **commit.show PRD v2** (통합 기획서 2026-04-19 + Creator Community 2026-04-23 기반 재정비 + §15 Intent-first/Trending UX)*
 
 *v2 핵심 delta (§1-A)*:
 *① Vote ≠ Applaud 분리 확정 · ② 졸업 %-based 상대평가 (Valedictorian 1 · Honors 5% · Graduate 14.5% · Rookie Circle 80%) · ③ Applaud polymorphic target (product/comment/build_log/stack/brief/recommit · UNIQUE target 기준) · ④ Creator Community 4 메뉴 V1 Day 1 필수 (Build Logs · Stacks · Asks · Office Hours) · ⑤ Rookie Circle 톤 엄격 유지 · ⑥ 브랜드 verb 페어 = Creator Audition + Engine Audit (라틴어 audīre 공통 어원) · "AI" 사용자 노출 금지 · ⑦ Audit 5+3 비대칭 유지*

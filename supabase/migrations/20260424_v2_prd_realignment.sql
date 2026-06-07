@@ -2,13 +2,13 @@
 -- 20260424_v2_prd_realignment.sql
 --
 -- commit.show PRD v2 schema migration. Anchors:
---   CLAUDE.md §1-A (v2 delta 7가지)
---   CLAUDE.md §6   (%-based graduation · Applaud is community-signal only)
---   CLAUDE.md §7.5 (Applaud polymorphic target · 1 toggle per item)
---   CLAUDE.md §9   (Vote uniform weight = 1.0 · tier caps monthly quota only)
---   CLAUDE.md §13  (new tables: community_posts · post_tags · office_hours_events
+--   AGENTS.md / CLAUDE.md §1-A (v2 delta 7가지)
+--   AGENTS.md / CLAUDE.md §6   (%-based graduation · Applaud is community-signal only)
+--   AGENTS.md / CLAUDE.md §7.5 (Applaud polymorphic target · 1 toggle per item)
+--   AGENTS.md / CLAUDE.md §9   (Vote uniform weight = 1.0 · tier caps monthly quota only)
+--   AGENTS.md / CLAUDE.md §13  (new tables: community_posts · post_tags · office_hours_events
 --                   comment_upvotes · ballot_wallets · awards_ledger · x_mentions)
---   CLAUDE.md §13-B (Creator Community 4 menus)
+--   AGENTS.md / CLAUDE.md §13-B (Creator Community 4 menus)
 --
 -- Sequenced as user-confirmed:
 --   ① Clear all applauds data  ② Single migration file  ③ RLS + triggers included

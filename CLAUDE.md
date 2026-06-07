@@ -47,7 +47,7 @@ PRD 버전: v2 (2026-04-24) — v1 통합 기획서 (2026-04-19 + Creator Commun
 
 ### 1-B. 참조 문서
 
-- `supabase/schema.sql` — 현재 DB 스키마 (v2 마이그레이션 대상)
+- `supabase/schema.sql` — v1.8까지의 baseline 스키마. v2 이후 실제 PRD delta 는 `supabase/migrations/`가 진실 소스이며, 핵심 파일은 `supabase/migrations/20260424_v2_prd_realignment.sql` (SQL 실행 완료).
 - v1 통합 기획서 (2026-04-19 + 2026-04-23 Creator Community 추가) — 본 CLAUDE.md 와 1:1 대응. 기획서는 외부 문서로 관리, CLAUDE.md 는 Claude Code 가 repo 에서 바로 실행 가능한 레벨의 운영 지침·요약.
 - **`INTERNAL.md`** (gitignored · 비공개) — 가격/환불 · 법적 검토 노트 · 어뷰징 방어 4층 상세 · audit calibration baseline · admin secrets · TODO. CLAUDE.md 의 슬림 stub 들이 가리키는 원본.
 - **공개 페이지 (사용자 노출)**:
@@ -229,7 +229,8 @@ vibe/
 │   ├── App.tsx              # 전체 페이지 레이아웃
 │   └── index.css            # 디자인 토큰 + 전역 스타일
 ├── supabase/
-│   └── schema.sql           # DB 스키마 + RLS 정책 (Supabase에 실행 필요)
+│   ├── schema.sql           # v1.8 baseline 스키마
+│   └── migrations/          # v2+ PRD delta · lexicographic order 적용
 ├── public/
 │   ├── favicon.svg
 │   └── hero-bg.webp         # 히어로 애니메이션 배경
@@ -980,7 +981,7 @@ md_discoveries         -- 프로젝트 repo 자동 스캔 후보
 artifact_applications  -- Apply-to-my-repo PR 기록
 ```
 
-전체 스키마: `supabase/schema.sql` 참조. **v2 delta 는 별도 migration 파일로** (§20 TODO).
+스키마 기준: `supabase/schema.sql` 은 v1.8 baseline, v2+ 실제 delta 는 `supabase/migrations/` 참조. `20260424_v2_prd_realignment.sql` 은 실행 완료 상태이며, 이후 migration 은 lexicographic order 로 누적 적용.
 
 ---
 
@@ -1987,11 +1988,11 @@ Library v2 · Intent-first + Trending UX (P9)
 
 3분 소화 UX · 기타 (P6)
   ✅ 감정 태그 코멘트 입력 프리셋 (🙌🎯🔥🤔💡 · §2) — EmotionTagRow.tsx + ProjectComments.tsx + ProjectActionFooter.tsx
-  ☐ 이번 주 하이라이트 카드 (Top 3 변화 · Audit 요약 자동 생성)
+  ✅ 이번 주 하이라이트 카드 (ThisWeekHighlight · top_movers_week RPC bookend 방식 · 누적 climb 표시 · 2026-05-07)
   ☐ 푸시 위젯 Vote (알림에서 앱 안 열고도 투표)
   ☐ 맞춤 다이제스트 (Creator/Scout 별 주간 이메일/푸시 요약)
-  ☐ 리그 리더보드 비주얼 (X=Audit 점수 · Y=Scout 점수 · 2D 지도)
-  ☐ 궤적 공유 카드 (3주 애니메이션 GIF 자동 생성 · X/LinkedIn 바이럴)
+  ✅ 리그 리더보드 비주얼 (LeaderboardPage · X=Audit Y=Scout scatter + 4-quadrant stat strip · /leaderboard · 2026-05-07)
+  ✅ 궤적 공유 카드 (og?kind=trajectory SVG/PNG + auto-tweet kind=trajectory · encore production INSERT 자동 트리거 · 2026-05-07)
 
 Vote 트리거 마무리 (P2 후속)
   ✅ 자기 앱 Vote 금지 DB 트리거 (P1 migration)
@@ -2003,8 +2004,8 @@ Brand verb 전역 교체 (P5)
   ✅ ProjectDetailPage · ApplaudButton · ProjectActionFooter (emoji CTA + Audition 톤)
   ✅ Hero CTA: "Audition your product →" — Hero.tsx · BackstagePage · LadderPage · ProfilePage · SubmitPage 전부 통일
   ✅ Nav "Apply" 버튼 · Submit 플로우 카피 Audition 통일
-  ☐ Claude API 프롬프트에 "Audit report" / 영어 prose "AI" 제거 명시 (잔존 점검 필요)
-  ☐ "AI 분석 리포트" 잔존 카피 전수 검색·치환 (잔존 점검 필요)
+  ✅ Claude API 프롬프트에 "Audit report" / 영어 prose "AI" 제거 명시 (analyze-project prose-field 룰 forbidden 처리 · 2026-05-07 audit)
+  ✅ 사용자 노출 "AI" 카피 잔존 점검 완료 — 우리 엔진 지칭 0건, Cursor/Claude/Lovable 등 사용자 도구 맥락만 예외 허용
 
 결제·OAuth (P7 · V1 런칭 필수)
   ✅ Supabase Auth · Google + X(twitter) + GitHub + LinkedIn(oidc) 4종 OAuth — auth.tsx · AuthModal.tsx · sync_x/github/linkedin_identity 트리거 모두 wired
@@ -2021,20 +2022,20 @@ Brand verb 전역 교체 (P5)
   ☐ Build Log 자동 씨앗 (recommit + Audit 변화 + Brief Phase 2 → 초안) — 미구현
 ```
 
-### 16.2.1 진짜 V1 미진행 항목 (2026-05-06 audit 후 정리)
+### 16.2.1 V1 잔여 항목 (2026-05-09 sync)
 
-위 ☐ 들 중에 V1 launch 까지 critical 한 것:
+2026-05-06 audit 당시 미진행으로 분류했던 P6/P5 항목 중 핵심 5개는 2026-05-07에 대부분 완료됐다. V1 launch critical 에 남은 것은 푸시 위젯 Vote / 맞춤 다이제스트가 아니라 P8 검증·운영 자동화 쪽이다.
 
 **Code 작업 (남은 P6 sub-items)**
-1. 이번 주 하이라이트 카드 (Top 3 movers · 시즌 시작 후 매 월요일 갱신)
-2. 2D 리더보드 (X=Audit · Y=Scout scatter)
-3. 궤적 공유 카드 (3주 애니메이션 GIF) — 바이럴 hook
-4. 푸시 위젯 Vote — V1 launch 무리 · V1.5 보류 가능
-5. 맞춤 다이제스트 (주간 이메일) — V1 launch 무리 · V1.5 보류 가능
+1. ✅ 이번 주 하이라이트 카드 — ThisWeekHighlight · top_movers_week RPC bookend 방식
+2. ✅ 2D 리더보드 — LeaderboardPage · X=Audit / Y=Scout scatter
+3. ✅ 궤적 공유 카드 — og?kind=trajectory SVG/PNG + auto-tweet kind=trajectory
+4. ☐ 푸시 위젯 Vote — V1 launch 무리 · V1.5 보류 가능
+5. ☐ 맞춤 다이제스트 (주간 이메일) — V1 launch 무리 · V1.5 보류 가능
 
 **잔존 코피 정리 (P5 마무리)**
-6. Claude API 프롬프트의 "AI" 잔존 / "AI 분석 리포트" 잔존 — grep + replace 한번
-7. 사용자 노출 영역 전체 audit (legacy 카피 점검)
+6. ✅ Claude API 프롬프트의 "AI" 잔존 / "AI 분석 리포트" 잔존 점검 — analyze-project prose-field 룰 forbidden 처리
+7. ✅ 사용자 노출 영역 전체 audit — 우리 엔진을 "AI"로 부르는 케이스 0건 확인
 
 **P8 운영 자동화**
 8. Hall of Fame SSR · Scout 티어 OR 승급 동작 검증 (이미 migration 들어가있어서 검증만)
@@ -2306,13 +2307,14 @@ git add -A && git commit -m "..." && git push origin main
 ### 19.3 Supabase 테이블 업데이트 시
 
 ```
-1. supabase/schema.sql 수정 (migration 라인 추가)
-2. Supabase 대시보드 → SQL Editor 에서 실행
+1. 새 SQL 은 supabase/migrations/YYYYMMDD_description.sql 로 추가
+   (schema.sql 은 v1.8 baseline 유지 · 새 PRD delta 의 진실 소스로 쓰지 않음)
+2. Supabase 대시보드 SQL Editor 또는 scripts/run-migration.mjs 로 실행
 3. src/lib/supabase.ts 의 타입 업데이트
 4. 관련 쿼리·RPC 호출부 타입 의존 점검
 ```
 
-**v2 마이그레이션 주의**: applauds 테이블은 polymorphic 으로 전면 재설계 (§1-A ③ · §13.1). 기존 데이터는 product 타겟으로 백필 + season_id/weight/scout_tier 컬럼 DROP. RLS 정책도 자기 콘텐츠 금지 포함해서 재작성 필요.
+**v2 마이그레이션 주의**: applauds 테이블은 polymorphic 으로 전면 재설계 완료 (§1-A ③ · §13.1). `20260424_v2_prd_realignment.sql` 에서 user-confirmed 로 legacy applaud 데이터를 clear 하고 `season_id/weight/scout_tier` 구조를 제거했다. 이후 변경은 백필 가정 없이 새 migration 으로 누적한다.
 
 ---
 

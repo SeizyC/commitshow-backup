@@ -8,7 +8,7 @@
 --   20260424_v2_prd_realignment.sql
 -- which swaps applauds → polymorphic target, renames ap_events →
 -- activity_point_ledger, and adds the Creator Community tables.
--- See CLAUDE.md §1-A for the v2 deltas this baseline does NOT yet include.
+-- See AGENTS.md / CLAUDE.md §1-A for the v2 deltas this baseline does NOT include.
 -- ════════════════════════════════════════════════════════════════════════════
 
 -- ═══════════════════════════════════════════════════════════════
