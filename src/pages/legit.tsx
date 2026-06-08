@@ -137,6 +137,13 @@ const CSS = `
 .l-modalclose{position:absolute;top:10px;right:14px;background:none;border:none;font-size:25px;line-height:1;color:#9A9080;cursor:pointer}.l-modalclose:hover{color:#211C15}
 .l-modaltext{font-size:13.5px;color:#5A5347;line-height:1.55;margin:8px 0 14px}
 .l-modalhint{font-size:12px;color:#9A9080;margin-top:10px}
+.l-addbtn{font-size:13.5px;font-weight:500;color:#97600F;cursor:pointer;margin-right:16px;white-space:nowrap}
+.l-addbtn:hover{color:#7A4D0C}
+.l-suberr{font-size:12.5px;color:#C8102E;margin:2px 0 10px}
+.l-subh{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:20px;color:#211C15;margin-bottom:4px}
+.l-herocta{display:inline-block;margin-top:18px;background:#B5791C;color:#fff;font-weight:600;font-size:14px;border:none;border-radius:8px;padding:11px 20px;cursor:pointer}
+.l-herocta:hover{background:#9C6716}
+@media(max-width:560px){.l-addbtn{display:none}}
 /* legit auth modal */
 .l-authcard{position:relative;background:#FAF8F3;border:1px solid #E7D4AC;border-radius:18px;padding:30px 28px 24px;max-width:380px;width:100%;box-shadow:0 24px 60px rgba(60,45,20,.3)}
 .l-authlogo{font-family:Fraunces,Georgia,serif;font-weight:700;font-size:22px;color:#B5791C;text-align:center}
@@ -185,7 +192,7 @@ const CSS = `
 .l-ftowl{height:22px;width:auto;margin-right:6px;object-fit:contain}
 .l-fttag{font-size:13px;color:#6E6557;line-height:1.55;margin:9px 0 0}
 .l-ftnav{display:flex;flex-direction:column;gap:9px;font-size:13.5px}
-.l-ftnav a{color:#6E6557;text-decoration:none}.l-ftnav a:hover{color:#97600F}
+.l-ftnav a,.l-ftnav span{color:#6E6557;text-decoration:none;cursor:pointer}.l-ftnav a:hover,.l-ftnav span:hover{color:#97600F}
 .l-ftbar{display:flex;gap:18px;justify-content:space-between;flex-wrap:wrap;align-items:baseline;padding:0 0 40px;font-size:11.5px;color:#9A9080;line-height:1.55}
 .l-ftbar>span:first-child{max-width:640px}
 .l-ftcc{font-family:'JetBrains Mono',monospace;white-space:nowrap}
@@ -234,7 +241,7 @@ export function LegitStyles() {
 
 // ── auth (reuses the app's existing AuthModal + useAuth) ──
 type AuthMode = 'signin' | 'signup'
-const LegitAuthCtx = createContext<{ openAuth: (m?: AuthMode) => void; loggedIn: boolean }>({ openAuth: () => {}, loggedIn: false })
+const LegitAuthCtx = createContext<{ openAuth: (m?: AuthMode) => void; openSubmit: () => void; loggedIn: boolean }>({ openAuth: () => {}, openSubmit: () => {}, loggedIn: false })
 export const useLegitAuth = () => useContext(LegitAuthCtx)
 
 export function LegitShell({ children }: { children: ReactNode }) {
@@ -246,17 +253,21 @@ export function LegitShell({ children }: { children: ReactNode }) {
     signOut: (redirectTo?: string) => Promise<void>
   }
   const openAuth = (m: AuthMode = 'signin') => { setMode(m); setOpen(true) }
+  const [subOpen, setSubOpen] = useState(false)
+  // Submitting needs an account (attribution + later claim) — sign in first.
+  const openSubmit = () => { if (!user) { openAuth('signup'); return } setSubOpen(true) }
   const name = member?.display_name || user?.email?.split('@')[0] || 'You'
   const initial = name.trim()[0]?.toUpperCase() || '?'
 
   return (
-    <LegitAuthCtx.Provider value={{ openAuth, loggedIn: !!user }}>
+    <LegitAuthCtx.Provider value={{ openAuth, openSubmit, loggedIn: !!user }}>
       <div className="lgt">
         <LegitStyles />
         <header className="l-h">
           <div className="l-wrap l-hd">
             <Link to="/v2" className="l-logo"><img className="l-logoowl" src="/favicon2.png" alt="" />Legit</Link>
             <div className="l-auth" style={{ marginLeft: 'auto' }}>
+              <span className="l-addbtn" onClick={openSubmit}>+ Add your service</span>
               {user
                 ? <>
                     <LegitBell recipientId={user.id || ''} />
@@ -270,6 +281,7 @@ export function LegitShell({ children }: { children: ReactNode }) {
         <LegitFooter />
       </div>
       <LegitAuthModal open={open} onClose={() => setOpen(false)} initialMode={mode} />
+      <LegitSubmitModal open={subOpen} onClose={() => setSubOpen(false)} />
       <ReactionToast />
     </LegitAuthCtx.Provider>
   )
@@ -278,6 +290,7 @@ export function LegitShell({ children }: { children: ReactNode }) {
 // Shared Legit footer — one consistent footer across every /v2 page.
 function LegitFooter() {
   const year = new Date().getFullYear()
+  const { openSubmit } = useLegitAuth()
   return (
     <footer className="l-ft">
       <div className="l-wrap l-ftin">
@@ -288,6 +301,7 @@ function LegitFooter() {
         <nav className="l-ftnav">
           <Link to="/v2">Directory</Link>
           <Link to="/v2/insights">Insights</Link>
+          <span onClick={openSubmit}>Add your service</span>
           <Link to="/terms">Terms</Link>
           <Link to="/privacy">Privacy</Link>
         </nav>
@@ -297,6 +311,50 @@ function LegitFooter() {
         <span className="l-ftcc">© {year} Madeflo Inc.</span>
       </div>
     </footer>
+  )
+}
+
+// Self-serve "add your service" — paste a URL, we enrich + benchmark it server
+// -side and route to the new (or already-existing) listing. Gated to signed-in
+// members at the entry point (openSubmit), so a user is always present here.
+function LegitSubmitModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const nav = useNavigate()
+  const { user } = useAuth() as { user: { id?: string } | null }
+  const [url, setUrl] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  useEffect(() => { if (open) { setUrl(''); setErr(null); setBusy(false) } }, [open])
+  if (!open) return null
+  const go = async () => {
+    setErr(null)
+    if (!user) { setErr('Sign in first to submit a service.'); return }
+    const u = url.trim()
+    if (!u) { setErr('Enter your service URL.'); return }
+    setBusy(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('ingest-directory', { body: { action: 'submit', url: u } })
+      const d = (data || {}) as { slug?: string; existing?: boolean; error?: string; message?: string }
+      if (error && !d?.slug && !d?.error) { setErr('Something went wrong. Please try again.'); setBusy(false); return }
+      if (d.error) { setErr(d.message || 'Could not submit this URL.'); setBusy(false); return }
+      if (d.slug) { onClose(); nav(`/v2/s/${d.slug}`); return }
+      setErr('Could not submit this URL.'); setBusy(false)
+    } catch { setErr('Network error. Please try again.'); setBusy(false) }
+  }
+  return (
+    <div className="l-modal" onClick={onClose}>
+      <div className="l-modalcard" onClick={e => e.stopPropagation()}>
+        <button className="l-modalclose" onClick={onClose} aria-label="Close">×</button>
+        <div className="l-subh">Add your service</div>
+        <p className="l-modaltext">Paste your product URL. We read the public page, structure it, and run the benchmark — then it&apos;s listed. One entry per product; if it&apos;s already here, we&apos;ll take you to it.</p>
+        <input className="l-authin" type="url" inputMode="url" placeholder="https://yourproduct.com" value={url}
+          onChange={e => setUrl(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') go() }} autoFocus disabled={busy} />
+        {err && <div className="l-suberr">{err}</div>}
+        <button className="l-btn l-authsubmit" style={{ opacity: busy ? 0.6 : 1, pointerEvents: busy ? 'none' : 'auto' }} onClick={go}>
+          {busy ? 'Reading & benchmarking…' : 'Add to directory'}
+        </button>
+        <div className="l-modalhint">Public landing pages only · up to 5 per day</div>
+      </div>
+    </div>
   )
 }
 

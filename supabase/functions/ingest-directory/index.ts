@@ -49,6 +49,18 @@ async function isAuthedAdmin(req: Request): Promise<boolean> {
   } catch { return false }
 }
 
+// Any signed-in member (not necessarily admin) — for the self-serve submit path.
+async function getMemberId(req: Request): Promise<string | null> {
+  const jwt = (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '')
+  if (!jwt || jwt === ANON_KEY || !SUPABASE_URL || !SR_KEY) return null
+  try {
+    const supa = createClient(SUPABASE_URL, SR_KEY)
+    const { data, error } = await supa.auth.getUser(jwt)
+    if (error || !data.user) return null
+    return data.user.id
+  } catch { return null }
+}
+
 const UA_RSS = 'legit-directory-research/0.1 (by /u/legit_research)'
 const UA_WEB = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36'
 const EXTRACT_MODEL = 'claude-haiku-4-5'
@@ -365,6 +377,7 @@ async function upsertListings(rows: any[]) {
     image_url: L.image || null, icon_url: L.icon || null, source: L.source || null, source_post_title: L.postTitle || null, meta: L.meta || null,
     has_pricing: !!L.price, js_starved: !!L.starved, enriched: !!(L.rich || L.prose),
     canonical_key: L.ckey || null,
+    ...(L.submitted_by ? { submitted_by: L.submitted_by } : {}),
     last_fetched_at: new Date().toISOString(),
   }))
   const r = await fetch(`${SUPABASE_URL}/rest/v1/listings?on_conflict=slug`, {
@@ -525,12 +538,82 @@ async function deleteListing(id: string) {
   return r.ok ? { ok: true } : { error: `delete ${r.status}` }
 }
 
+// Self-serve submit: a signed-in member POSTs a single URL. Resolve canonical →
+// route to an existing listing if we already have it · per-member daily cap ·
+// spam/junk gate · grounded Claude enrich · upsert · fire-and-forget benchmark.
+async function runSubmit(rawUrl: string, memberId: string) {
+  let url = (rawUrl || '').trim()
+  if (!url) return { error: 'no_url', message: 'Enter your service URL.' }
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url
+  let host = ''
+  try { host = new URL(url).host.toLowerCase().replace(/^www\./, '') } catch { return { error: 'bad_url', message: 'That does not look like a valid URL.' } }
+  if (NOISE(host)) return { error: 'not_eligible', message: "Social, marketplace and link-shortener URLs aren't eligible — submit the product's own site." }
+  const ckey = canonicalKey(url)
+  const SRH = { apikey: SR_KEY, authorization: `Bearer ${SR_KEY}` }
+
+  // already in the directory? route there instead of duplicating
+  const exr = await fetch(`${SUPABASE_URL}/rest/v1/listings?canonical_key=eq.${encodeURIComponent(ckey)}&select=slug&limit=1`, { headers: SRH })
+  const exist = exr.ok ? await exr.json() as { slug: string }[] : []
+  if (exist[0]?.slug) return { existing: true, slug: exist[0].slug }
+
+  // per-member daily cap
+  const since = new Date(Date.now() - 86400000).toISOString()
+  const rl = await fetch(`${SUPABASE_URL}/rest/v1/listings?submitted_by=eq.${memberId}&created_at=gte.${since}&select=id`,
+    { headers: { ...SRH, prefer: 'count=exact', range: '0-0', 'range-unit': 'items' } })
+  const used = Number((rl.headers.get('content-range') || '/0').split('/')[1] || 0)
+  if (used >= 5) return { error: 'rate_limit', message: "You've submitted 5 services today — try again tomorrow." }
+
+  // fetch the landing page + spam/junk gate
+  const ex = await extractLanding(url)
+  const name = pickName([ex.title], host)
+  const probe = `${name} ${ex.body.slice(0, 500)}`
+  const junk = !ex.body || ex.body.length < 120
+    || /(this domain (is |may be )?for sale|buy this domain|domain (is )?parked|parked (free|domain|by)|account suspended|site (is )?under construction|page not found|404 (not found|error)|error 404|website (is )?expired|godaddy|sedo\.com|hugedomains|default web page)/i.test(probe)
+  if (junk) return { error: 'thin', message: "We couldn't read enough from that page to list it — make sure the URL loads a public landing page." }
+
+  let rich = null, prose = null
+  if (ex.body.length >= 200) {
+    [rich, prose] = await Promise.all([
+      claudeExtract({ name, url, source: 'Submitted', bodyText: ex.body }),
+      claudeCompose({ name, url, bodyText: ex.body }),
+    ])
+  }
+  const row = {
+    slug: slugify(host), name, oneliner: ex.desc || '', url, domain: host, platform: guessPlatform(url),
+    image: ex.image, icon: ex.icon, price: ex.price, starved: ex.starved,
+    source: 'Submitted', postTitle: '', meta: '', rich, prose, ckey, submitted_by: memberId,
+  }
+  const up = await upsertListings([row])
+  if ((up as { error?: string })?.error) return { error: 'save_failed', message: 'Could not save the listing. Please try again.' }
+
+  try {
+    ;(globalThis as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime?.waitUntil(
+      fetch(`${SUPABASE_URL}/functions/v1/benchmark-listing`, {
+        method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${SR_KEY}` },
+        body: JSON.stringify({ pending: true, limit: 5 }),
+      }).catch(() => {}),
+    )
+  } catch { /* waitUntil unavailable — benchmark still runs on the weekly sweep */ }
+
+  return { slug: row.slug, name }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
-  if (!(await isAuthedAdmin(req))) return json({ error: 'unauthorized' }, 401)
   let payload: any = {}
   try { payload = await req.json() } catch { return json({ error: 'bad json' }, 400) }
   const action = payload.action || 'ingest'
+
+  // Self-serve submit is open to any signed-in member (not admin-gated).
+  if (action === 'submit') {
+    const memberId = await getMemberId(req)
+    if (!memberId) return json({ error: 'unauthorized', message: 'Sign in to submit a service.' }, 401)
+    try { return json(await runSubmit(String(payload.url || ''), memberId)) }
+    catch (e) { return json({ error: 'server', message: String(e) }, 500) }
+  }
+
+  // Everything else (discovery, edit, delete) stays admin-gated.
+  if (!(await isAuthedAdmin(req))) return json({ error: 'unauthorized' }, 401)
   try {
     if (action === 'ingest') return json(await runIngest(payload.target || '', { window: payload.window, limit: payload.limit }))
     if (action === 'update') return json(await patchListing(String(payload.id), payload.patch || {}))
