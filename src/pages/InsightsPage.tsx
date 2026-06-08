@@ -48,6 +48,15 @@ const CSS = `
 .ins-track>i{display:block;height:100%;background:#E0A92E;border-radius:4px}
 .ins-mval{text-align:right;color:#211C15;font-variant-numeric:tabular-nums;font-weight:600}
 @media(max-width:560px){.ins-mrow{grid-template-columns:1fr 80px 42px;gap:11px}}
+.ins-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:22px 0 30px}
+.ins-kpi{background:#FCFAF5;border:1px solid #E0D8C8;border-radius:12px;padding:16px 18px}
+.ins-kpiv{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:29px;color:#211C15;line-height:1;letter-spacing:-.01em}
+.ins-kpil{font-size:11px;color:#9A9080;font-family:'JetBrains Mono',monospace;margin-top:8px;text-transform:uppercase;letter-spacing:.04em}
+.ins-card{border:1px solid #E9E2D4;border-radius:14px;padding:20px 22px;margin-bottom:16px}
+.ins-cardh{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:17px;color:#211C15;margin-bottom:2px}
+.ins-cardn{font-size:12px;color:#9A9080;font-family:'JetBrains Mono',monospace;margin-bottom:16px}
+.ins-card .ins-rows{max-width:none}
+@media(max-width:640px){.ins-kpis{grid-template-columns:repeat(2,1fr)}.ins-card{padding:18px 16px}}
 `
 
 const avg = (xs: number[]) => xs.length ? Math.round(xs.reduce((s, x) => s + x, 0) / xs.length) : 0
@@ -138,7 +147,7 @@ export function InsightsPage() {
       <LegitShell>
         <style dangerouslySetInnerHTML={{ __html: CSS }} />
         <div className="l-wrap" style={{ paddingTop: 28, paddingBottom: 56 }}>
-          <h1 className="ins-h">Category insights</h1>
+          <h1 className="ins-h">Directory insights</h1>
           <div className="ins-dim" style={{ fontSize: 14 }}>Loading…</div>
         </div>
       </LegitShell>
@@ -149,54 +158,68 @@ export function InsightsPage() {
     <LegitShell>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
       <div className="l-wrap" style={{ paddingTop: 28, paddingBottom: 64 }}>
-        <h1 className="ins-h">Category insights</h1>
-        <div className="ins-sub">Benchmark averages across {total.n} tested services · 0–100 per axis</div>
+        <h1 className="ins-h">Directory insights</h1>
+        <div className="ins-sub">Objective benchmark across every tested service · 0–100 per axis</div>
 
-        <table className="ins-tbl">
-          <thead>
-            <tr>
-              <th>Category</th><th>Services</th><th>Quality</th>
-              <th className="opt">Trust</th><th className="opt">Activity</th><th className="opt">Transparency</th><th>Paid</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr className="tot">
-              <td className="ins-cat">{total.key}</td><td>{total.n}</td><td>{total.q}</td>
-              <td className="opt">{total.t}</td><td className="opt">{total.a}</td><td className="opt">{total.tr}</td><td>{total.paid}%</td>
-            </tr>
-            {aggs.map(r => (
-              <tr key={r.key}>
-                <td className="ins-cat">{r.key}</td><td>{r.n}</td>
-                <td><span className="ins-q"><span className="ins-bar"><i style={{ width: `${r.q}%` }} /></span>{r.q}</span></td>
-                <td className="opt">{r.t}</td><td className="opt">{r.a}</td><td className="opt">{r.tr}</td><td>{r.paid}%</td>
+        <div className="ins-kpis">
+          <div className="ins-kpi"><div className="ins-kpiv">{total.n}</div><div className="ins-kpil">Tested services</div></div>
+          <div className="ins-kpi"><div className="ins-kpiv">{total.q}</div><div className="ins-kpil">Avg quality</div></div>
+          <div className="ins-kpi"><div className="ins-kpiv">{aggs.length}</div><div className="ins-kpil">Categories</div></div>
+          <div className="ins-kpi"><div className="ins-kpiv">{total.paid}%</div><div className="ins-kpil">Paid</div></div>
+        </div>
+
+        <div className="ins-card">
+          <div className="ins-cardh">By category</div>
+          <div className="ins-cardn">Benchmark averages per category</div>
+          <table className="ins-tbl">
+            <thead>
+              <tr>
+                <th>Category</th><th>Services</th><th>Quality</th>
+                <th className="opt">Trust</th><th className="opt">Activity</th><th className="opt">Transparency</th><th>Paid</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {/* ── quality distribution ── */}
-        <div className="ins-sec">Quality distribution</div>
-        <div className="ins-secn">How {total.n} tested services land on the quality axis</div>
-        <div className="ins-rows">
-          {bands.map(b => <MRow key={b.label} label={b.label} sub={b.sub} pct={b.pct} value={`${b.n}`} />)}
+            </thead>
+            <tbody>
+              <tr className="tot">
+                <td className="ins-cat">{total.key}</td><td>{total.n}</td><td>{total.q}</td>
+                <td className="opt">{total.t}</td><td className="opt">{total.a}</td><td className="opt">{total.tr}</td><td>{total.paid}%</td>
+              </tr>
+              {aggs.map(r => (
+                <tr key={r.key}>
+                  <td className="ins-cat">{r.key}</td><td>{r.n}</td>
+                  <td><span className="ins-q"><span className="ins-bar"><i style={{ width: `${r.q}%` }} /></span>{r.q}</span></td>
+                  <td className="opt">{r.t}</td><td className="opt">{r.a}</td><td className="opt">{r.tr}</td><td>{r.paid}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
-        {/* ── trust & security ── */}
-        <div className="ins-sec">Trust &amp; security posture</div>
-        <div className="ins-secn">Across {trust.n} tested web services</div>
-        <div className="ins-rows">
-          <MRow label="Served over HTTPS" pct={trust.https} value={`${trust.https}%`} />
-          <MRow label="Security header (CSP)" pct={trust.csp} value={`${trust.csp}%`} />
-          <MRow label="Privacy policy reachable" pct={trust.privacy} value={`${trust.privacy}%`} />
-          <MRow label="Lighthouse performance" sub="avg" pct={trust.perf} value={`${trust.perf}`} />
-          <MRow label="Lighthouse accessibility" sub="avg" pct={trust.a11y} value={`${trust.a11y}`} />
+        <div className="ins-card">
+          <div className="ins-cardh">Quality distribution</div>
+          <div className="ins-cardn">How {total.n} tested services land on the quality axis</div>
+          <div className="ins-rows">
+            {bands.map(b => <MRow key={b.label} label={b.label} sub={b.sub} pct={b.pct} value={`${b.n}`} />)}
+          </div>
         </div>
 
-        {/* ── by source ── */}
-        <div className="ins-sec">By discovery source</div>
-        <div className="ins-secn">Where tested launches come from · bar = avg quality</div>
-        <div className="ins-rows">
-          {sources.map(s => <MRow key={s.key} label={s.key} sub={`${s.n}`} pct={s.q} value={`${s.q}`} />)}
+        <div className="ins-card">
+          <div className="ins-cardh">Trust &amp; security posture</div>
+          <div className="ins-cardn">Across {trust.n} tested web services</div>
+          <div className="ins-rows">
+            <MRow label="Served over HTTPS" pct={trust.https} value={`${trust.https}%`} />
+            <MRow label="Security header (CSP)" pct={trust.csp} value={`${trust.csp}%`} />
+            <MRow label="Privacy policy reachable" pct={trust.privacy} value={`${trust.privacy}%`} />
+            <MRow label="Lighthouse performance" sub="avg" pct={trust.perf} value={`${trust.perf}`} />
+            <MRow label="Lighthouse accessibility" sub="avg" pct={trust.a11y} value={`${trust.a11y}`} />
+          </div>
+        </div>
+
+        <div className="ins-card">
+          <div className="ins-cardh">By discovery source</div>
+          <div className="ins-cardn">Where tested launches come from · bar = avg quality</div>
+          <div className="ins-rows">
+            {sources.map(s => <MRow key={s.key} label={s.key} sub={`${s.n}`} pct={s.q} value={`${s.q}`} />)}
+          </div>
         </div>
       </div>
     </LegitShell>
