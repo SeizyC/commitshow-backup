@@ -29,6 +29,7 @@ export function DirectoryPage() {
   const [params, setParams] = useSearchParams()
   const [q, setQ] = useState('')
   const cat = params.get('cat')
+  const platform = params.get('platform')
   const setCat = (c: string | null) => {
     const next = new URLSearchParams(params)
     if (c) next.set('cat', c); else next.delete('cat')
@@ -89,6 +90,7 @@ export function DirectoryPage() {
     const needle = q.trim().toLowerCase()
     const out = rows.filter(r => {
       if (cat && r.category !== cat) return false
+      if (platform && (r.platform || 'web') !== platform) return false
       if (needle) {
         const hay = `${r.name} ${r.tagline || ''} ${r.description || ''} ${r.domain} ${r.category || ''} ${(r.features || []).join(' ')}`.toLowerCase()
         if (!hay.includes(needle)) return false
@@ -98,7 +100,7 @@ export function DirectoryPage() {
     // Default order = quality/completeness + reactions + legit tickets, desc.
     // Stable sort keeps created_at desc as the tiebreak (rows arrive newest-first).
     return [...out].sort((a, b) => rankScore(b, stats.get(b.id), tickets.get(b.id)) - rankScore(a, stats.get(a.id), tickets.get(a.id)))
-  }, [rows, q, cat, stats, tickets])
+  }, [rows, q, cat, platform, stats, tickets])
 
   const featured = useMemo(() =>
     (rows || []).filter(r => r.image_url)
@@ -146,8 +148,13 @@ export function DirectoryPage() {
       </div>
 
       <div className="l-wrap">
-        {!q && !cat && featured.length > 0 && (
+        {!q && !cat && !platform && featured.length > 0 && (
           <div className="l-premium">{featured.map(p => <PremiumCard key={p.id} p={p} tickets={tickets.get(p.id) || 0} />)}</div>
+        )}
+        {platform && (
+          <div className="l-feedhead" style={{ marginTop: 6 }}>
+            <span className="c" style={{ fontSize: 13 }}>Platform · <b style={{ color: '#211C15' }}>{platform}</b> · <Link to="/v2" style={{ color: '#97600F' }}>clear</Link></span>
+          </div>
         )}
         {cats.length > 0 && (
           <div className="l-catwrap">
@@ -162,7 +169,7 @@ export function DirectoryPage() {
         )}
 
         <div className="l-feedhead">
-          <h2>{cat || (q ? 'Search results' : 'All services')}</h2>
+          <h2>{cat || platform || (q ? 'Search results' : 'All services')}</h2>
           <span className="c">{rows ? `${filtered.length} shown` : ''}</span>
         </div>
 

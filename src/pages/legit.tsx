@@ -110,6 +110,11 @@ const CSS = `
 .l-ico{width:60px;height:60px;border-radius:14px;background:linear-gradient(135deg,#C99A2E,#A66A18);color:#fff;font-family:Fraunces;font-weight:700;font-size:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background-size:cover;background-position:center}
 .l-one{font-size:17px;color:#6E6557;margin:7px 0 12px;max-width:600px}
 .l-pills{display:flex;flex-wrap:wrap;gap:7px}.l-pill{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#6E6557;background:#F4F0E8;border:1px solid #E9E2D4;border-radius:999px;padding:3px 10px}.l-pill.plat{color:#97600F;background:#F6EBD4;border-color:#E7D4AC}
+a.l-pill{cursor:pointer;text-decoration:none;transition:border-color .12s,background .12s}
+a.l-pill:hover{border-color:#C9A22E;background:#F1E6CC}
+.l-altcta{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;font-size:13.5px;color:#8A5A12;background:linear-gradient(180deg,#FCF3DC,#F6EBD4);border:1.5px solid #E0A92E;border-radius:9px;padding:10px 14px;text-decoration:none;box-shadow:0 1px 0 rgba(224,169,46,.25)}
+.l-altcta:hover{background:linear-gradient(180deg,#F8EAC8,#F1E0BE);border-color:#C9A22E}
+.lgt a.l-altcta,.lgt a.l-altcta:hover{color:#8A5A12}
 .l-heroact{margin-left:auto;display:flex;flex-direction:column;gap:9px;align-items:stretch;flex-shrink:0;min-width:172px}.l-heroact .l-btn{text-align:center}
 .l-claim{font-size:12.5px;color:#97600F;cursor:pointer;text-align:center}.l-claim:hover{text-decoration:underline}
 .l-prov{font-size:11.5px;color:#9A9080;text-align:center;line-height:1.5;margin-top:2px}

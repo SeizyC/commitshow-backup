@@ -52,11 +52,14 @@ function Detail({ p, onReload }: { p: Listing; onReload: () => void }) {
   const features = p.features || []
   const { icon: vIcon, preview: vPreview } = visuals(p)
   const [ticketCount, setTicketCount] = useState(0)
+  const [altCount, setAltCount] = useState(0)
   const [rating, setRatingStats] = useState<{ avg: number; count: number }>({ avg: 0, count: 0 })
   useEffect(() => {
     let alive = true
     supabase.from('listing_ticket_stats').select('ticket_count').eq('listing_id', p.id).maybeSingle()
       .then(({ data }) => { if (alive) setTicketCount((data as { ticket_count: number } | null)?.ticket_count || 0) })
+    if (p.category) supabase.from('listings').select('id', { count: 'exact', head: true }).eq('category', p.category).neq('slug', p.slug).not('benchmark', 'is', null)
+      .then(({ count }) => { if (alive) setAltCount(count || 0) })
     const loadRating = () => supabase.from('listing_rating_stats').select('avg_rating, rating_count').eq('listing_id', p.id).maybeSingle()
       .then(({ data }) => { if (!alive) return; const d = data as { avg_rating: number; rating_count: number } | null; setRatingStats({ avg: d?.avg_rating || 0, count: d?.rating_count || 0 }) })
     loadRating()
@@ -106,14 +109,19 @@ function Detail({ p, onReload }: { p: Listing; onReload: () => void }) {
           </div>
           <div className="l-one">{p.tagline || p.description}</div>
           <div className="l-pills">
-            <span className="l-pill plat">{p.platform || 'web'}</span>
+            <Link to={`/v2?platform=${encodeURIComponent(p.platform || 'web')}`} className="l-pill plat">{p.platform || 'web'}</Link>
             <span className="l-pill">{p.domain}</span>
-            {p.category && <span className="l-pill plat">{p.category}</span>}
-            {p.category && <Link to={`/v2/alternatives/${p.slug}`} className="l-pill" style={{ color: '#97600F', textDecoration: 'none' }}>alternatives →</Link>}
+            {p.category && <Link to={`/v2?cat=${encodeURIComponent(p.category)}`} className="l-pill plat">{p.category}</Link>}
           </div>
         </div>
         <div className="l-heroact">
           <a className="l-btn" href={p.url} target="_blank" rel="noopener noreferrer">Visit site ↗</a>
+          {p.category && altCount > 0 && (
+            <Link to={`/v2/alternatives/${p.slug}`} className="l-altcta">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M8 3 4 7l4 4" /><path d="M4 7h16" /><path d="m16 21 4-4-4-4" /><path d="M20 17H4" /></svg>
+              Compare {altCount} alternative{altCount === 1 ? '' : 's'}
+            </Link>
+          )}
           <div className="l-prov">Info as of {dt} · from {p.domain}</div>
         </div>
       </div>
