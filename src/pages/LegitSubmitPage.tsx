@@ -77,7 +77,13 @@ export function LegitSubmitPage() {
       if (d.error) { setErr(d.message || 'Could not save this service.'); setBusy(false); return }
       if (d.slug) {
         const host = d.domain || url.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/^www\./, '')
-        setDone({ id: d.id || '', domain: host, slug: d.slug, name: d.name || f.name })
+        let id = d.id || ''
+        if (!id) {
+          const { data: row } = await supabase.from('listings').select('id,domain').eq('slug', d.slug).maybeSingle()
+          const r = row as { id?: string; domain?: string } | null
+          id = r?.id || ''
+        }
+        setDone({ id, domain: host, slug: d.slug, name: d.name || f.name })
         setPhase('verify'); setBusy(false); return
       }
       setErr('Could not save this service.'); setBusy(false)
