@@ -24,6 +24,8 @@ const CSS = `
 .sub-row .l-btn{white-space:nowrap;padding:11px 18px}
 .sub-prov{font-size:12px;color:#9A9080;font-family:'JetBrains Mono',monospace;margin-top:18px}
 .sub-back{font-size:13px;color:#97600F;cursor:pointer;margin-bottom:16px;display:inline-block}
+.sub-exist{margin-top:12px;font-size:13.5px;color:#5A5347;background:#FBF6EC;border:1px solid #E7D4AC;border-radius:8px;padding:11px 13px}
+.sub-link{color:#97600F;cursor:pointer;font-weight:600}
 @media(max-width:560px){.sub-row{flex-direction:column}.sub-row .l-btn{width:100%}}
 `
 
@@ -39,6 +41,7 @@ export function LegitSubmitPage() {
   const [f, setF] = useState<Fields>(EMPTY)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const [existing, setExisting] = useState<string | null>(null)
 
   useEffect(() => {
     setHead({ title: 'Add your service — Legit.Show', description: 'Add your launched product to the Legit.Show directory. We read the public page, structure it, and run the benchmark.', canonical: 'https://commit.show/v2/submit' })
@@ -47,7 +50,7 @@ export function LegitSubmitPage() {
   const set = (k: keyof Fields, v: string) => setF(prev => ({ ...prev, [k]: v }))
 
   const fetchDetails = async () => {
-    setErr(null)
+    setErr(null); setExisting(null)
     const u = url.trim()
     if (!u) { setErr('Enter your service URL.'); return }
     setBusy(true)
@@ -55,7 +58,7 @@ export function LegitSubmitPage() {
       const { data, error } = await supabase.functions.invoke('ingest-directory', { body: { action: 'submit', url: u, preview: true } })
       const d = (data || {}) as { preview?: boolean; fields?: Partial<Fields>; existing?: boolean; slug?: string; error?: string; message?: string }
       if (error && !d?.fields && !d?.error) { setErr('Could not read that page. Please try again.'); setBusy(false); return }
-      if (d.existing && d.slug) { nav(`/v2/s/${d.slug}`); return }
+      if (d.existing && d.slug) { setExisting(d.slug); setBusy(false); return }
       if (d.error) { setErr(d.message || 'Could not read that page.'); setBusy(false); return }
       setF({ ...EMPTY, ...d.fields })
       setPhase('form'); setBusy(false)
@@ -100,6 +103,11 @@ export function LegitSubmitPage() {
               </button>
             </div>
             {err && <div className="l-suberr" style={{ marginTop: 10 }}>{err}</div>}
+            {existing && (
+              <div className="sub-exist">
+                Already in the directory — <span className="sub-link" onClick={() => nav(`/v2/s/${existing}`)}>view the listing →</span>
+              </div>
+            )}
             <div className="sub-prov">App Store / Play apps: submit the marketing site · public landing pages only · up to 5 per day</div>
           </div>
         ) : (
