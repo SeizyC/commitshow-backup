@@ -553,7 +553,8 @@ async function deleteListing(id: string) {
 // Self-serve submit: a signed-in member POSTs a single URL. Resolve canonical →
 // route to an existing listing if we already have it · per-member daily cap ·
 // spam/junk gate · grounded Claude enrich · upsert · fire-and-forget benchmark.
-async function runSubmit(rawUrl: string, memberId: string) {
+type SubmitFields = { name?: string; tagline?: string; description?: string; category?: string; pricing?: string; platform?: string }
+async function runSubmit(rawUrl: string, memberId: string, opts: { preview?: boolean; fields?: SubmitFields } = {}) {
   let url = (rawUrl || '').trim()
   if (!url) return { error: 'no_url', message: 'Enter your service URL.' }
   if (!/^https?:\/\//i.test(url)) url = 'https://' + url
@@ -568,32 +569,53 @@ async function runSubmit(rawUrl: string, memberId: string) {
   const exist = exr.ok ? await exr.json() as { slug: string }[] : []
   if (exist[0]?.slug) return { existing: true, slug: exist[0].slug }
 
-  // per-member daily cap
+  // fetch the landing page + spam/junk gate (both preview and final)
+  const ex = await extractLanding(url)
+  const autoName = pickName([ex.title], host)
+  const probe = `${autoName} ${ex.body.slice(0, 500)}`
+  const junk = !ex.body || ex.body.length < 120
+    || /(this domain (is |may be )?for sale|buy this domain|domain (is )?parked|parked (free|domain|by)|account suspended|site (is )?under construction|page not found|404 (not found|error)|error 404|website (is )?expired|godaddy|sedo\.com|hugedomains|default web page)/i.test(probe)
+  if (junk) return { error: 'thin', message: "We couldn't read enough from that page to list it — make sure the URL loads a public landing page." }
+
+  const f = opts.fields || {}
+  // grounded enrichment runs on preview, or when the owner didn't supply core copy
+  let rich: { what_it_is?: string; category?: string; pricing?: string; [k: string]: unknown } | null = null
+  let prose: { tagline?: string; description?: string } | null = null
+  if ((opts.preview || !(f.tagline && f.description && f.category)) && ex.body.length >= 200) {
+    [rich, prose] = await Promise.all([
+      claudeExtract({ name: autoName, url, source: 'Submitted', bodyText: ex.body }),
+      claudeCompose({ name: autoName, url, bodyText: ex.body }),
+    ])
+  }
+
+  // preview = prefill the form, nothing saved
+  if (opts.preview) {
+    return { preview: true, fields: {
+      name: autoName,
+      tagline: prose?.tagline || ex.desc || '',
+      description: prose?.description || rich?.what_it_is || '',
+      category: rich?.category || '',
+      pricing: rich?.pricing || '',
+    } }
+  }
+
+  // final submit — per-member daily cap, then owner fields override the enrichment
   const since = new Date(Date.now() - 86400000).toISOString()
   const rl = await fetch(`${SUPABASE_URL}/rest/v1/listings?submitted_by=eq.${memberId}&created_at=gte.${since}&select=id`,
     { headers: { ...SRH, prefer: 'count=exact', range: '0-0', 'range-unit': 'items' } })
   const used = Number((rl.headers.get('content-range') || '/0').split('/')[1] || 0)
   if (used >= 5) return { error: 'rate_limit', message: "You've submitted 5 services today — try again tomorrow." }
 
-  // fetch the landing page + spam/junk gate
-  const ex = await extractLanding(url)
-  const name = pickName([ex.title], host)
-  const probe = `${name} ${ex.body.slice(0, 500)}`
-  const junk = !ex.body || ex.body.length < 120
-    || /(this domain (is |may be )?for sale|buy this domain|domain (is )?parked|parked (free|domain|by)|account suspended|site (is )?under construction|page not found|404 (not found|error)|error 404|website (is )?expired|godaddy|sedo\.com|hugedomains|default web page)/i.test(probe)
-  if (junk) return { error: 'thin', message: "We couldn't read enough from that page to list it — make sure the URL loads a public landing page." }
-
-  let rich = null, prose = null
-  if (ex.body.length >= 200) {
-    [rich, prose] = await Promise.all([
-      claudeExtract({ name, url, source: 'Submitted', bodyText: ex.body }),
-      claudeCompose({ name, url, bodyText: ex.body }),
-    ])
-  }
+  const richOut = { ...(rich || {}),
+    ...(f.category ? { category: f.category } : {}),
+    ...(f.pricing != null ? { pricing: f.pricing } : {}),
+    ...(f.description ? { what_it_is: f.description } : {}) }
+  const proseOut = { tagline: f.tagline || prose?.tagline || '', description: f.description || prose?.description || '' }
   const row = {
-    slug: slugify(host), name, oneliner: ex.desc || '', url, domain: host, platform: guessPlatform(url),
-    image: ex.image, icon: ex.icon, price: ex.price, starved: ex.starved,
-    source: 'Submitted', postTitle: '', meta: '', rich, prose, ckey, submitted_by: memberId,
+    slug: slugify(host), name: f.name || autoName, oneliner: f.tagline || ex.desc || '',
+    url, domain: host, platform: f.platform || guessPlatform(url),
+    image: ex.image, icon: ex.icon, price: !!(f.pricing || ex.price), starved: ex.starved,
+    source: 'Submitted', postTitle: '', meta: '', rich: richOut, prose: proseOut, ckey, submitted_by: memberId,
   }
   const up = await upsertListings([row])
   if ((up as { error?: string })?.error) return { error: 'save_failed', message: 'Could not save the listing. Please try again.' }
@@ -607,7 +629,7 @@ async function runSubmit(rawUrl: string, memberId: string) {
     )
   } catch { /* waitUntil unavailable — benchmark still runs on the weekly sweep */ }
 
-  return { slug: row.slug, name }
+  return { slug: row.slug, name: row.name }
 }
 
 Deno.serve(async (req) => {
@@ -620,7 +642,7 @@ Deno.serve(async (req) => {
   if (action === 'submit') {
     const memberId = await getMemberId(req)
     if (!memberId) return json({ error: 'unauthorized', message: 'Sign in to submit a service.' }, 401)
-    try { return json(await runSubmit(String(payload.url || ''), memberId)) }
+    try { return json(await runSubmit(String(payload.url || ''), memberId, { preview: !!payload.preview, fields: payload.fields })) }
     catch (e) { return json({ error: 'server', message: String(e) }, 500) }
   }
 
