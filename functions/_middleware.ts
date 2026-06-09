@@ -395,6 +395,15 @@ async function directoryMetaResponse(env: Env, request: Request): Promise<Respon
 }
 
 export const onRequest: PagesFunction<Env> = async (ctx) => {
+  // Domain migration → legit.show. Fold the legacy commit.show (+ www) and the
+  // www.legit.show host onto the apex legit.show with a 301 (same path/query) so
+  // search + answer-engine equity consolidates on one canonical domain. Other
+  // hosts (api.commit.show, *.pages.dev preview) are untouched.
+  const _u = new URL(ctx.request.url)
+  if (_u.hostname === 'commit.show' || _u.hostname === 'www.commit.show' || _u.hostname === 'www.legit.show') {
+    return Response.redirect(`https://legit.show${_u.pathname}${_u.search}`, 301)
+  }
+
   // Directory (Legit.Show) routes get server-rendered meta + JSON-LD; every
   // other path falls through to the SPA shell unchanged.
   let response: Response | null = null
