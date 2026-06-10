@@ -392,11 +392,24 @@ async function scoreListing(l: { id: string; url: string; domain: string }) {
   }
 }
 
-async function patchBenchmark(id: string, benchmark: unknown) {
+type Scored = Awaited<ReturnType<typeof scoreListing>>
+
+async function patchBenchmark(id: string, b: Scored) {
   await fetch(`${SUPABASE_URL}/rest/v1/listings?id=eq.${id}`, {
     method: 'PATCH', headers: { ...SR, 'content-type': 'application/json', prefer: 'return=minimal' },
-    body: JSON.stringify({ benchmark }),
+    body: JSON.stringify({ benchmark: b }),
   })
+  // Append a time-series snapshot — the listing's benchmark jsonb is overwritten each
+  // run, so history accumulates here for trend / most-improved reporting.
+  await fetch(`${SUPABASE_URL}/rest/v1/benchmark_history`, {
+    method: 'POST', headers: { ...SR, 'content-type': 'application/json', prefer: 'return=minimal' },
+    body: JSON.stringify({
+      listing_id: id, scored_at: b.scored_at, form: b.form, overall: b.overall, assessed: b.assessed,
+      performance: b.performance, accessibility: b.accessibility, security: b.security, privacy: b.privacy,
+      reliability: b.reliability, standards: b.standards, discoverability: b.discoverability, maintenance: b.maintenance,
+      signals: b.signals,
+    }),
+  }).catch(() => { /* history is best-effort — never block the score */ })
 }
 
 Deno.serve(async (req) => {

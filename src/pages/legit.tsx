@@ -20,8 +20,22 @@ export type Listing = {
   has_pricing: boolean; js_starved: boolean
   info_as_of: string | null; created_at: string
   benchmark: Benchmark | null
+  repo_audit?: RepoAudit | null
   subcategory?: string | null; submitted_by?: string | null
   verified_by?: string | null; verified_at?: string | null
+}
+
+// Repo deep-audit — code-check teardown that enriches the 7 Frames for OSS repos
+// (RLS · rate limiting · webhook idempotency · error tracking · indexes · prompt
+// injection · client secrets · CORS). Stored in its own column, refreshed on its
+// own cadence. Each check is a measurement fact, not a verdict.
+export type RepoAuditStatus = 'pass' | 'warn' | 'fail' | 'na'
+export type RepoAuditCheck = { status: RepoAuditStatus; finding: string; evidence?: string | null }
+export type RepoAudit = {
+  scanned_at?: string; repo?: string; branch?: string; files?: number
+  ai_sdk?: boolean; has_api?: boolean
+  summary?: { pass: number; warn: number; fail: number; na: number }
+  checks?: Record<string, RepoAuditCheck>
 }
 
 // 7-frame production-readiness benchmark (engine schema 2). Each frame is null
@@ -1256,6 +1270,73 @@ export function BenchmarkDetailModal({ b, onClose }: { b: Benchmark; onClose: ()
         })}
         <div className="l-bdnote">Measured by Legit.Show · deterministic · re-checked weekly</div>
       </div>
+    </div>
+  )
+}
+
+// ── repo teardown cards — the deep code checks (OSS repos) ──
+// Measurement facts, not a verdict (per methodology): each check is a fact +
+// why-it-matters + file evidence. This is the "extractable depth" reports cite.
+const RA_CHECKS: { key: string; label: string; why: string }[] = [
+  { key: 'client_secret',       label: 'Client-side secrets',  why: 'Secret keys in the browser bundle can be stolen and abused' },
+  { key: 'env_committed',       label: 'Committed .env',       why: 'Credentials checked into the repo leak to anyone who clones it' },
+  { key: 'rls_coverage',        label: 'Row-level security',   why: 'Tables without access rules can expose other users’ data' },
+  { key: 'rate_limiting',       label: 'API rate limiting',    why: 'No limit lets one user overload the server or run up the bill' },
+  { key: 'webhook_idempotency', label: 'Webhook idempotency',  why: 'Duplicate webhooks without dedupe cause double charges/processing' },
+  { key: 'prompt_injection',    label: 'Prompt injection',     why: 'Raw user input reaching the model can hijack it or leak data' },
+  { key: 'error_tracking',      label: 'Error tracking',       why: 'No monitoring means failures happen silently, unnoticed' },
+  { key: 'missing_indexes',     label: 'Database indexes',     why: 'Unindexed foreign keys get slow as the data grows' },
+  { key: 'cors',                label: 'CORS policy',          why: 'A wide-open CORS origin lets any site call the API' },
+]
+const RA_DOT: Record<RepoAuditStatus, { c: string; m: string }> = {
+  pass: { c: '#5C8A3E', m: '✓' }, warn: { c: '#A8742E', m: '!' }, fail: { c: '#C24A33', m: '✕' }, na: { c: '#B3A992', m: '–' },
+}
+const RA_CSS = `
+.l-ra{margin-top:18px}
+.l-rah{display:flex;align-items:baseline;gap:8px;margin-bottom:3px}
+.l-rasum{margin-left:auto;display:flex;gap:7px;font-family:'JetBrains Mono',monospace;font-size:11px}
+.l-rasum b{font-weight:600}
+.l-ranote{font-size:11px;color:#9A9080;margin-bottom:12px;line-height:1.5}
+.l-racard{display:flex;gap:9px;padding:9px 0;border-top:1px solid #EFE4CC}
+.l-racard:first-of-type{border-top:none}
+.l-radot{width:16px;height:16px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;margin-top:1px}
+.l-ralabel{font-weight:600;font-size:13.5px;color:#2E2820}
+.l-rafind{font-size:12.5px;color:#5A5347;margin-top:1px;line-height:1.45}
+.l-rawhy{font-size:11.5px;color:#8A8170;margin-top:2px;line-height:1.45}
+.l-raev{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#97600F;margin-top:3px;word-break:break-all}
+.l-rana{opacity:.55}
+`
+export function RepoAuditCards({ audit }: { audit: RepoAudit }) {
+  const checks = audit.checks || {}
+  const present = RA_CHECKS.filter(c => checks[c.key])
+  if (!present.length) return null
+  const s = audit.summary || { pass: 0, warn: 0, fail: 0, na: 0 }
+  return (
+    <div className="l-ra">
+      <style dangerouslySetInnerHTML={{ __html: RA_CSS }} />
+      <div className="l-rah">
+        <div className="l-lh">◆ repo teardown</div>
+        <div className="l-rasum">
+          <span style={{ color: RA_DOT.pass.c }}><b>{s.pass}</b> pass</span>
+          <span style={{ color: RA_DOT.warn.c }}><b>{s.warn}</b> warn</span>
+          <span style={{ color: RA_DOT.fail.c }}><b>{s.fail}</b> fail</span>
+        </div>
+      </div>
+      <div className="l-ranote">Deep code checks on the source{audit.repo ? ` · ${audit.repo}` : ''}. Measurement facts, not a verdict.</div>
+      {present.map(c => {
+        const ck = checks[c.key]; const dot = RA_DOT[ck.status]
+        return (
+          <div key={c.key} className={`l-racard ${ck.status === 'na' ? 'l-rana' : ''}`}>
+            <span className="l-radot" style={{ background: dot.c }}>{dot.m}</span>
+            <div>
+              <div className="l-ralabel">{c.label}</div>
+              <div className="l-rafind">{ck.finding}</div>
+              {ck.status !== 'na' && <div className="l-rawhy">{c.why}</div>}
+              {ck.evidence && <div className="l-raev">{ck.evidence}</div>}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { BenchmarkChart, CategoryPicker, FaviconTile, LegitShell, LegitVouch, PricingField, RatingPanel, ReactionBar, ReviewsSection, StarRating, TicketBadge, useLegitAuth, VerifyOwnership, visuals, type Listing } from './legit'
+import { BenchmarkChart, CategoryPicker, FaviconTile, LegitShell, LegitVouch, PricingField, RatingPanel, ReactionBar, RepoAuditCards, ReviewsSection, StarRating, TicketBadge, useLegitAuth, VerifyOwnership, visuals, type Listing } from './legit'
 import { useAuth } from '../lib/auth'
 import { setHead, clearJsonLd } from '../lib/seo'
 
@@ -167,9 +167,14 @@ function Detail({ p, onReload }: { p: Listing; onReload: () => void }) {
                     <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
                   </svg>
                   <div className="l-lockt">Benchmark pending</div>
-                  <div className="l-locksub">Objective, reproducible measurements — quality, trust, activity, transparency.</div>
+                  <div className="l-locksub">Objective, reproducible measurements across seven production-readiness frames.</div>
                 </>}
           </div>
+          {p.repo_audit?.checks && (
+            <div className="l-lab" style={{ marginTop: 12 }}>
+              <RepoAuditCards audit={p.repo_audit} />
+            </div>
+          )}
           <div className="l-facts" style={{ marginTop: 16 }}>
             <div className="l-f"><span className="l-k">Platform</span><span className="l-v">{p.platform || 'Web'}</span></div>
             <div className="l-f"><span className="l-k">Category</span><span className="l-v">{p.category || '—'}</span></div>
