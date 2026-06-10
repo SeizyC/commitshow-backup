@@ -2,6 +2,11 @@
 
 > Claude Code가 이 파일을 읽으면 전체 프로젝트를 즉시 이해하고 작업할 수 있다.
 > 매 세션 시작 시 이 파일을 먼저 읽을 것.
+>
+> **⚠️ 피벗 (2026-06): 메인 제품 = Legit.Show** (출시 서비스 디렉토리 + 7-frame 벤치마크).
+> 같은 repo·도메인 legit.show. commit.show 는 `/old` 로 보존. **Legit 작업 시 [LEGIT.md](LEGIT.md)
+> 를 먼저 읽을 것** (이 CLAUDE.md 는 commit.show 컨텍스트). 벤치마크 방법론·리포트 로직은
+> austinpw-cloud/legitshow repo `dev_requests/06·07`.
 
 ---
 
