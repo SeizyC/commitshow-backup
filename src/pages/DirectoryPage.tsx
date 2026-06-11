@@ -22,6 +22,17 @@ function rankScore(r: Listing, s?: Stats, tickets = 0): number {
   return c + rx + tickets * 4
 }
 
+// Featured carousel = genuinely popular, recognizable projects, ranked by real
+// reach we actually measure — GitHub stars / npm weekly downloads — not by in-app
+// vouches (which were gameable and got test-inflated). Web listings have no public
+// popularity signal, so the carousel skews to well-known OSS.
+function popularity(r: Listing): number {
+  const s = (r.benchmark?.signals || {}) as { stars?: number; weekly?: number }
+  const stars = Number(s.stars) || 0
+  const weekly = Number(s.weekly) || 0
+  return Math.max(Math.log10(stars + 1) * 1.05, Math.log10(weekly + 1))
+}
+
 export function DirectoryPage() {
   const [rows, setRows] = useState<Listing[] | null>(null)
   const [stats, setStats] = useState<Map<string, Stats>>(new Map())
@@ -103,10 +114,10 @@ export function DirectoryPage() {
   }, [rows, q, cat, platform, stats, tickets])
 
   const featured = useMemo(() =>
-    (rows || []).filter(r => r.image_url)
-      .sort((a, b) => rankScore(b, stats.get(b.id), tickets.get(b.id)) - rankScore(a, stats.get(a.id), tickets.get(a.id)))
+    (rows || []).filter(r => popularity(r) > 0)
+      .sort((a, b) => popularity(b) - popularity(a))
       .slice(0, 10),
-    [rows, stats, tickets])
+    [rows])
 
   // right-edge fade on the category row — shown only while there's more to
   // scroll, hidden once scrolled to the end.

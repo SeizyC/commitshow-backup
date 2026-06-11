@@ -234,7 +234,7 @@ export function ReportDetailPage() {
         </div>
 
         <div className="rp-cta">
-          <a className="rp-ctaa" href="/add">Audit your tool →</a>
+          <a className="rp-ctaa" href="/add">Audit your service →</a>
           <Link className="rp-ctaa ghost" to="/reports">All reports</Link>
         </div>
       </main>
