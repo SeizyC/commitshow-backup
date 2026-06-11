@@ -76,8 +76,8 @@ const CSS = `
 .rp-citebtn:hover{background:#7E4F0C}
 .rp-citeperm{font-size:11.5px;color:#6F6757;margin-top:9px;line-height:1.5}
 .rp-cta{display:flex;gap:12px;flex-wrap:wrap;margin:40px 0 10px}
-.rp-ctaa{background:#97600F;color:#fff;text-decoration:none;border-radius:8px;padding:12px 20px;font-weight:600;font-size:14.5px}
-.rp-ctaa.ghost{background:#fff;color:#97600F;border:1px solid #E7D4AC}
+.lgt a.rp-ctaa{background:#97600F;color:#fff;text-decoration:none;border-radius:8px;padding:12px 20px;font-weight:600;font-size:14.5px}
+.lgt a.rp-ctaa.ghost{background:#fff;color:#97600F;border:1px solid #E7D4AC}
 .rp-body p{font-size:15px;line-height:1.7;color:#3C362C;max-width:680px;margin:10px 0}
 `
 
