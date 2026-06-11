@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { BenchmarkChart, CategoryPicker, FaviconTile, LegitShell, LegitVouch, PricingField, RatingPanel, ReactionBar, RepoAuditCards, ReviewsSection, StarRating, TicketBadge, useLegitAuth, VerifyOwnership, visuals, type Listing } from './legit'
+import { CategoryPicker, FaviconTile, LegitShell, LegitVouch, PricingField, RatingPanel, ReactionBar, ReviewsSection, StarRating, TicketBadge, useLegitAuth, VerifyOwnership, visuals, type Listing } from './legit'
+import { BenchmarkChart, RepoAuditCards } from './legitDetail'
 import { useAuth } from '../lib/auth'
 import { setHead, clearJsonLd } from '../lib/seo'
 
