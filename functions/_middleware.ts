@@ -416,7 +416,8 @@ async function directoryMetaResponse(env: Env, request: Request): Promise<Respon
       { '@type': 'ListItem', position: 2, name: 'Reports', item: `${SITE}/reports` },
       { '@type': 'ListItem', position: 3, name: rep.title, item: canonical },
     ] }
-    const out = rewriteHtml(assetRes, { title, description, canonical, ogImage: `${SITE}/og-image.png`, jsonld: [dataset, article, breadcrumb] })
+    const ogImage = `${supa(env)}/functions/v1/og-png?kind=report&slug=${encodeURIComponent(rep.slug)}`
+    const out = rewriteHtml(assetRes, { title, description, canonical, ogImage, jsonld: [dataset, article, breadcrumb] })
     const r = new Response(out.body, out); r.headers.set('x-legit-seo', 'report'); r.headers.set('x-legit-slug', rep.slug); return r
   }
   // listing detail
