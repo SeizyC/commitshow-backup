@@ -251,7 +251,7 @@ a.l-pill:hover{border-color:#C9A22E;background:#F1E6CC}
 .l-ic{width:72px;height:72px;border-radius:14px;background:linear-gradient(135deg,#C99A2E,#A66A18);color:#fff;font-weight:700;font-size:30px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:Fraunces;background-size:cover;background-position:center;overflow:hidden}
 .l-fav{background:#fff;border:1px solid #EDE6D8}.l-fav img{width:100%;height:100%;object-fit:cover}
 .l-fav-mark{background:#FBF6EC}.l-fav-mark img{object-fit:contain;padding:16%;box-sizing:border-box}
-.l-nm{font-weight:600;color:#211C15;font-size:19px;font-family:Fraunces,Georgia,serif;line-height:1.2}.l-dm{font-size:12.5px;color:#6F6757;font-family:'JetBrains Mono',monospace;font-weight:400}.l-ol{font-size:15px;color:#524B3F;margin-top:5px;line-height:1.55;max-width:680px;display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.l-nm{font-weight:600;color:#211C15;font-size:19px;font-family:Fraunces,Georgia,serif;line-height:1.2}.l-dm{font-size:12.5px;color:#6F6757;font-family:'JetBrains Mono',monospace;font-weight:400}.l-ol{font-size:15px;color:#463F33;margin-top:5px;line-height:1.55;max-width:680px;display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .l-tag{font-size:11px;font-family:'JetBrains Mono',monospace;padding:3px 9px;border-radius:5px;background:#F4F0E8;color:#6E6557;border:1px solid #E9E2D4}.l-tag.warn{background:#FBEFD9;color:#97600F;border-color:#E7D4AC}
 .l-score{font-size:11.5px;font-family:'JetBrains Mono',monospace;font-weight:700;padding:3px 9px;border-radius:5px;background:#F6EBD4;color:#97600F;border:1px solid #E7D4AC}
 /* header nav + dropdowns + bell */
@@ -277,15 +277,9 @@ a.l-pill:hover{border-color:#C9A22E;background:#F1E6CC}
 @media(max-width:820px){.l-cols{grid-template-columns:1fr}.l-search{display:none}.lgt input,.lgt textarea,.lgt select{font-size:16px}}
 `
 
-let fontInjected = false
+// Fonts are loaded eagerly from index.html <head> (primary product) so the hero
+// H1 doesn't wait on JS — this just injects the scoped stylesheet.
 export function LegitStyles() {
-  if (typeof document !== 'undefined' && !fontInjected) {
-    fontInjected = true
-    const l = document.createElement('link')
-    l.rel = 'stylesheet'
-    l.href = 'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap'
-    document.head.appendChild(l)
-  }
   return <style dangerouslySetInnerHTML={{ __html: CSS }} />
 }
 

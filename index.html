@@ -53,6 +53,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;0,900;1,700;1,800&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <!-- Legit.Show fonts (primary product at /) — eager in HTML so the hero H1
+         (Fraunces, the LCP element) renders without waiting for JS to inject them -->
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
     <!-- Pretendard · admin console only. Lazy-injected by src/lib/loadPretendard.ts
          when /admin routes mount, so public pages (≈99% of traffic) skip a
          render-blocking ~13 KB CSS from a third-party CDN. Used to live here
