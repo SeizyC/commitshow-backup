@@ -9,13 +9,17 @@ import { setHead, clearJsonLd } from '../lib/seo'
 // citation-first: one hero stat, the failure bars in plain language, a hall of fame
 // that links to each tool, a visible methodology box, and a copy-paste cite block.
 
-type Stat = { key: string; label: string; plain: string; fail: number; n: number; fail_pct: number | null; limited?: boolean }
+type Stat = { key: string; label: string; plain: string; fix?: string; fail: number; n: number; fail_pct: number | null; limited?: boolean }
 type Tool = { name: string; slug: string; pass?: number; fail?: number }
+type Band = { label: string; n: number; pct: number; tone: string }
+type CatRow = { category: string; n: number; fail_pct: number }
 type Report = {
   slug: string; kind: string; title: string; subtitle: string; coined_term: string | null
   hero_stat: { value: number; unit: string; label: string; n: number }
   sample: { total: number; scope: string; as_of: string }
   stats: Stat[]; hall_of_fame: Tool[]; lowlights: Tool[]
+  distribution?: { title: string; note: string; bands: Band[] } | null
+  by_category?: { metric: string; rows: CatRow[] } | null
   body: { h: string; md: string }[]; published_at: string
 }
 
@@ -40,6 +44,22 @@ const CSS = `
 .rp-track{height:8px;background:#EFE6D2;border-radius:5px;overflow:hidden;margin:9px 0 7px}
 .rp-fill{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,#C24A33,#A8742E)}
 .rp-plain{font-size:13.5px;color:#5A5347;line-height:1.5}
+.rp-fix{font-size:12.5px;color:#4E7A36;line-height:1.45;margin-top:5px}
+.rp-fix b{font-weight:600;color:#3F6A2A}
+.rp-dist{display:flex;flex-direction:column;gap:12px;margin-top:2px}
+.rp-distrow{display:grid;grid-template-columns:135px 1fr 78px;align-items:center;gap:14px}
+.rp-distlabel{font-size:13.5px;color:#2C261D;font-weight:500}
+.rp-disttrack{height:18px;background:#EFE6D2;border-radius:5px;overflow:hidden}
+.rp-distfill{display:block;height:100%;border-radius:5px}
+.rp-distval{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:#211C15;text-align:right;font-weight:600}
+.rp-cat{width:100%;border-collapse:collapse;font-size:14px;margin-top:2px}
+.rp-cat td{padding:11px 0;border-top:1px solid #ECE3D2}
+.rp-cat tr:first-child td{border-top:none}
+.rp-cat .ct{font-weight:500;color:#2C261D}
+.rp-cat .num{font-family:'JetBrains Mono',monospace;color:#9A9080;text-align:right;font-size:12px;padding-right:16px;white-space:nowrap}
+.rp-cat .bar{width:130px}.rp-cat .bar span{display:block;height:14px;background:#EFE6D2;border-radius:4px;overflow:hidden}.rp-cat .bar i{display:block;height:100%;background:#C24A33;border-radius:4px}
+.rp-cat .pct{font-family:'JetBrains Mono',monospace;color:#C24A33;text-align:right;font-weight:600;width:54px}
+@media(max-width:560px){.rp-distrow{grid-template-columns:110px 1fr 64px;gap:9px}.rp-cat .num,.rp-cat .bar{display:none}}
 .rp-limited{opacity:.62}
 .rp-limnote{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#A8742E;margin-left:7px}
 .rp-tools{display:flex;flex-wrap:wrap;gap:9px;margin-top:6px}
@@ -135,8 +155,42 @@ export function ReportDetailPage() {
             </div>
             <div className="rp-track"><span className="rp-fill" style={{ width: `${s.fail_pct ?? 0}%` }} /></div>
             <div className="rp-plain">{s.plain}</div>
+            {s.fix && <div className="rp-fix"><b>Fix:</b> {s.fix}</div>}
           </div>
         ))}
+
+        {r.distribution?.bands?.length ? (
+          <>
+            <h2 className="rp-sec">{r.distribution.title}</h2>
+            <div className="rp-secn">{r.distribution.note}</div>
+            <div className="rp-dist">
+              {r.distribution.bands.map(b => (
+                <div key={b.label} className="rp-distrow">
+                  <span className="rp-distlabel">{b.label}</span>
+                  <span className="rp-disttrack"><span className="rp-distfill" style={{ width: `${b.pct}%`, background: b.tone }} /></span>
+                  <span className="rp-distval">{b.pct}% · {b.n}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : null}
+
+        {r.by_category?.rows?.length ? (
+          <>
+            <h2 className="rp-sec">By category</h2>
+            <div className="rp-secn">Share with {r.by_category.metric}, by category.</div>
+            <table className="rp-cat"><tbody>
+              {r.by_category.rows.map(c => (
+                <tr key={c.category}>
+                  <td className="ct">{c.category}</td>
+                  <td className="num">n={c.n}</td>
+                  <td className="bar"><span><i style={{ width: `${c.fail_pct}%` }} /></span></td>
+                  <td className="pct">{c.fail_pct}%</td>
+                </tr>
+              ))}
+            </tbody></table>
+          </>
+        ) : null}
 
         {(r.body || []).map((b, i) => (
           <div key={i} className="rp-body"><h2 className="rp-sec">{b.h}</h2><p>{bold(b.md)}</p></div>

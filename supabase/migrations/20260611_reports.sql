@@ -28,3 +28,7 @@ alter table reports enable row level security;
 drop policy if exists "public read published reports" on reports;
 create policy "public read published reports" on reports for select using (status = 'published');
 grant select on reports to anon, authenticated;
+
+-- 2026-06-11b · richer report sections
+alter table reports add column if not exists distribution jsonb;  -- pass/fail histogram
+alter table reports add column if not exists by_category jsonb;   -- failure by category
