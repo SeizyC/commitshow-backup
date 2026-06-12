@@ -91,7 +91,7 @@ const CSS = `
 /* iOS: stop double-tap zoom on tappable controls (rating stars, vouch, chips, buttons) */
 .lgt button,.lgt a,.l-starbtn,.l-vouchbtn,.l-tkchip,.l-tkthrow,.l-rxuse,.l-row{touch-action:manipulation}
 .l-statrow{display:flex;gap:22px;justify-content:center;align-items:center;margin-top:22px;font-size:12.5px;color:#6F6757;font-family:'JetBrains Mono',monospace;flex-wrap:wrap}.l-statrow b{color:#211C15}
-.l-subnav{border-bottom:1px solid #EFE6D2;background:#FCFAF5}
+.l-subnav{background:#FCFAF5}
 .l-subnavin{display:flex;gap:26px;align-items:center;justify-content:center;height:40px;overflow-x:auto;scrollbar-width:none}.l-subnavin::-webkit-scrollbar{display:none}
 .lgt a.l-subnavlink{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:#6E6557;text-decoration:none;white-space:nowrap;letter-spacing:.02em}
 .lgt a.l-subnavlink:hover{color:#97600F}
