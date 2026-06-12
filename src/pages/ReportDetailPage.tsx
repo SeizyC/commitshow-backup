@@ -134,7 +134,7 @@ export function ReportDetailPage() {
       jsonld: {
         '@context': 'https://schema.org', '@type': 'Dataset',
         name: r.title, description: r.subtitle,
-        url: `${SITE}/reports/${r.slug}`, datePublished: r.published_at,
+        url: `${SITE}/reports/${r.slug}`, datePublished: r.published_at, dateModified: r.published_at,
         creator: { '@type': 'Organization', name: 'Legit.Show', url: SITE },
         isAccessibleForFree: true, keywords: ['production readiness', 'AI tools', 'benchmark', r.coined_term || ''].filter(Boolean),
         measurementTechnique: 'Legit.Show 7-Frame benchmark (deterministic repository + URL analysis)',

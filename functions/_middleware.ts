@@ -401,14 +401,14 @@ async function directoryMetaResponse(env: Env, request: Request): Promise<Respon
     const description = clean(hv + rep.subtitle, 200)
     const dataset = {
       '@context': 'https://schema.org', '@type': 'Dataset', name: rep.title, description: clean(rep.subtitle, 300),
-      url: canonical, datePublished: rep.published_at, isAccessibleForFree: true,
+      url: canonical, datePublished: rep.published_at, dateModified: rep.published_at, isAccessibleForFree: true,
       creator: { '@type': 'Organization', name: 'Legit.Show', url: SITE },
       measurementTechnique: 'Legit.Show 7-Frame benchmark (deterministic repository + URL analysis)',
       keywords: ['production readiness', 'AI tools', 'benchmark', rep.coined_term || ''].filter(Boolean),
       variableMeasured: (rep.stats || []).map(s => ({ '@type': 'PropertyValue', name: s.label, value: `${s.fail_pct}%`, description: `n=${s.n}` })),
     }
     const article = {
-      '@context': 'https://schema.org', '@type': 'Article', headline: rep.title, description, datePublished: rep.published_at,
+      '@context': 'https://schema.org', '@type': 'Article', headline: rep.title, description, datePublished: rep.published_at, dateModified: rep.published_at,
       author: { '@type': 'Organization', name: 'Legit.Show' }, publisher: { '@type': 'Organization', name: 'Legit.Show', url: SITE }, mainEntityOfPage: canonical,
     }
     const breadcrumb = { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
