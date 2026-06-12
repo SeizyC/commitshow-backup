@@ -150,10 +150,12 @@ export function DirectoryPage() {
               autoComplete="off"
             />
           </div>
-          <div className="l-statrow">
-            <span><b>{rows ? rows.length : '—'}</b> services</span>
-            <span><b>{cats.length}</b> categories</span>
-          </div>
+        </div>
+      </div>
+      <div className="l-wrap">
+        <div className="l-statrow" style={{ marginTop: 0, padding: '14px 0 4px' }}>
+          <span><b>{rows ? rows.length : '—'}</b> services</span>
+          <span><b>{cats.length}</b> categories</span>
         </div>
       </div>
 
