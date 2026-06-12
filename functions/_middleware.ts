@@ -261,15 +261,19 @@ async function getListing(env: Env, slug: string): Promise<Listing | null> {
 }
 type ReportRow = {
   slug: string; title: string; subtitle: string; coined_term: string | null
-  hero_stat: { value: number; label: string; n: number } | null
+  hero_stat: { value: number; unit?: string; label: string; n: number } | null
   sample: { total: number; scope: string; as_of: string } | null
-  stats: { label: string; fail_pct: number | null; n: number }[] | null
+  stats: { label: string; plain?: string; fail_pct: number | null; n: number }[] | null
+  distribution: { title: string; bands: { label: string; pct: number }[] } | null
+  by_category: { metric: string; rows: { category: string; fail_pct: number }[] } | null
+  compare: { oss_label: string; saas_label: string; frames: { label: string; oss: number; saas: number }[] } | null
+  body: { h: string; md: string }[] | null
   published_at: string
 }
 async function getReport(env: Env, slug: string): Promise<ReportRow | null> {
   const key = env.SUPABASE_ANON_KEY ?? ''
   if (!key) return null
-  const cols = 'slug,title,subtitle,coined_term,hero_stat,sample,stats,published_at'
+  const cols = 'slug,title,subtitle,coined_term,hero_stat,sample,stats,distribution,by_category,compare,body,published_at'
   const r = await fetch(`${supa(env)}/rest/v1/reports?slug=eq.${encodeURIComponent(slug)}&status=eq.published&select=${cols}&limit=1`,
     { headers: { apikey: key, Authorization: `Bearer ${key}` } })
   if (!r.ok) return null
@@ -298,8 +302,31 @@ class Meta { constructor(private v: string) {} element(e: Element) { e.setAttrib
 class Attr { constructor(private a: string, private v: string) {} element(e: Element) { e.setAttribute(this.a, this.v) } }
 class TitleEl { constructor(private t: string) {} element(e: Element) { e.setInnerContent(this.t) } }
 class HeadInject { constructor(private html: string) {} element(e: Element) { e.append(this.html, { html: true }) } }
-function rewriteHtml(res: Response, opts: { title: string; description: string; canonical: string; ogImage?: string; jsonld: unknown[] }): Response {
-  const { title, description, canonical, ogImage, jsonld } = opts
+class RootInject { constructor(private html: string) {} element(e: Element) { e.setInnerContent(this.html, { html: true }) } }
+// Server-render the report body into #root so crawlers / AI engines read the full
+// content (not just meta + JSON-LD). React (createRoot) clears #root and re-renders
+// the interactive version on mount, so users see the styled app; the brief pre-JS
+// view is lightly inline-styled. This is the AEO ceiling-raiser for report pages.
+function reportBodyHtml(rep: ReportRow): string {
+  const esc = (x: unknown) => String(x ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const bar = (label: string, pct: number, sub: string) => `<li style="margin:11px 0"><strong>${esc(label)}</strong> \u2014 ${pct}%<div style="height:6px;background:#efe6d2;border-radius:3px;margin:5px 0;max-width:480px"><span style="display:block;height:100%;width:${pct}%;background:#c24a33;border-radius:3px"></span></div>${sub ? `<span style="color:#5a5347;font-size:14px">${esc(sub)}</span>` : ''}</li>`
+  const h = rep.hero_stat
+  const yr = (rep.sample?.as_of || '').slice(0, 4)
+  let o = `<main style="max-width:760px;margin:0 auto;padding:90px 24px 80px;font-family:Georgia,serif;color:#211c15;line-height:1.6">`
+  if (rep.coined_term) o += `<p style="font-family:monospace;font-size:12px;color:#97600f;text-transform:uppercase;letter-spacing:.08em">${esc(rep.coined_term)} \u00b7 ${yr} edition</p>`
+  o += `<h1 style="font-size:38px;line-height:1.1;margin:8px 0 14px">${esc(rep.title)}</h1>`
+  o += `<p style="font-size:17px;color:#4a4438">${esc(rep.subtitle)}</p>`
+  if (h) o += `<div style="background:#211c15;color:#e0a92e;border-radius:16px;padding:34px;text-align:center;margin:26px 0"><div style="font-size:92px;font-weight:700;line-height:1">${esc(h.value)}${esc(h.unit || '%')}</div><div style="color:#e9e2d4;font-size:16px;margin-top:8px">${esc(h.label)} \u2014 according to Legit.Show</div></div>`
+  if (rep.stats?.length) o += `<h2>The findings</h2><ul style="list-style:none;padding:0">${rep.stats.map(s => bar(s.label, s.fail_pct ?? 0, s.plain || '')).join('')}</ul>`
+  if (rep.distribution?.bands?.length) o += `<h2>${esc(rep.distribution.title)}</h2><ul style="list-style:none;padding:0">${rep.distribution.bands.map(b => bar(b.label, b.pct, '')).join('')}</ul>`
+  if (rep.by_category?.rows?.length) o += `<h2>By category</h2><ul>${rep.by_category.rows.map(c => `<li>${esc(c.category)} \u2014 ${c.fail_pct}% ${esc(rep.by_category!.metric)}</li>`).join('')}</ul>`
+  if (rep.compare?.frames?.length) o += `<h2>${esc(rep.compare.oss_label)} vs ${esc(rep.compare.saas_label)}</h2><ul>${rep.compare.frames.map(fr => `<li>${esc(fr.label)}: ${esc(rep.compare!.oss_label)} ${fr.oss} \u00b7 ${esc(rep.compare!.saas_label)} ${fr.saas}</li>`).join('')}</ul>`
+  if (rep.body?.length) o += rep.body.map(b => `<h2>${esc(b.h)}</h2><p>${esc(b.md.replace(/\*\*/g, ''))}</p>`).join('')
+  o += `<p style="margin-top:30px"><a href="/methodology">How this was measured \u2192</a></p></main>`
+  return o
+}
+function rewriteHtml(res: Response, opts: { title: string; description: string; canonical: string; ogImage?: string; jsonld: unknown[]; bodyHtml?: string }): Response {
+  const { title, description, canonical, ogImage, jsonld, bodyHtml } = opts
   let rw = new HTMLRewriter()
     .on('title', new TitleEl(title))
     .on('meta[name="description"]', new Meta(description))
@@ -316,6 +343,7 @@ function rewriteHtml(res: Response, opts: { title: string; description: string; 
   }
   const ld = jsonld.map(o => `<script type="application/ld+json">${ldSafe(o)}</script>`).join('')
   rw = rw.on('head', new HeadInject(ld))
+  if (bodyHtml) rw = rw.on('#root', new RootInject(bodyHtml))
   return rw.transform(res)
 }
 async function directoryMetaResponse(env: Env, request: Request): Promise<Response | null> {
@@ -417,7 +445,7 @@ async function directoryMetaResponse(env: Env, request: Request): Promise<Respon
       { '@type': 'ListItem', position: 3, name: rep.title, item: canonical },
     ] }
     const ogImage = `${supa(env)}/functions/v1/og-png?kind=report&slug=${encodeURIComponent(rep.slug)}`
-    const out = rewriteHtml(assetRes, { title, description, canonical, ogImage, jsonld: [dataset, article, breadcrumb] })
+    const out = rewriteHtml(assetRes, { title, description, canonical, ogImage, jsonld: [dataset, article, breadcrumb], bodyHtml: reportBodyHtml(rep) })
     const r = new Response(out.body, out); r.headers.set('x-legit-seo', 'report'); r.headers.set('x-legit-slug', rep.slug); return r
   }
   // listing detail
