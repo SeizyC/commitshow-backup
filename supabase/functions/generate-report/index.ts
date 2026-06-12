@@ -134,7 +134,7 @@ async function buildSurface(period: string, asOf: string) {
   const hall = rows.filter(r => { const f = fr(r); return f.security?.csp && f.security?.hsts && f.privacy?.privacyPage }).map(r => ({ name: r.name, slug: r.slug, pass: r.benchmark?.security || 0, fail: 0 })).sort((a, b) => b.pass - a.pass).slice(0, 8)
   const hero = stats.find(s => s.key === 'no_csp')!
   return {
-    slug: `web-security-baseline-${period}`, kind: 'flagship', status: 'draft',
+    slug: `web-security-baseline-${period}`, kind: 'security', status: 'draft',
     title: `The Web Security Baseline · ${period.toUpperCase()}`,
     subtitle: `We checked the public security posture of ${total} launched web apps, SaaS and AI tools on Legit.Show — the headers and policies a browser sees before you ever sign in. Most ship without the basics.`,
     coined_term: 'the security-header gap',
@@ -173,7 +173,7 @@ async function buildPrivacy(period: string, asOf: string) {
   const by_category = { metric: 'no cookie consent', rows: [...cat.entries()].map(([category, e]) => ({ category, n: e.n, fail_pct: Math.round(100 * e.fail / e.n) })).filter(c => c.n >= 4).sort((a, b) => b.n - a.n).slice(0, 6) }
   const hero = stats[0]
   return {
-    slug: `the-privacy-gap-${period}`, kind: 'flagship', status: 'draft',
+    slug: `the-privacy-gap-${period}`, kind: 'privacy', status: 'draft',
     title: `The Privacy Gap · ${period.toUpperCase()}`,
     subtitle: `We checked what ${total} launched web apps, SaaS and AI tools tell you about your data — before you ever sign in. Most tell you nothing.`,
     coined_term: 'the consent gap',
@@ -211,7 +211,7 @@ async function buildMcp(period: string, asOf: string) {
   const hall = sum.filter(r => r.fail === 0 && r.pass >= 2).sort((a, b) => b.pass - a.pass).slice(0, 8)
   const hero = stats.find(s => s.key === 'auth') || stats[0]
   return {
-    slug: `state-of-mcp-servers-${period}`, kind: 'flagship', status: 'draft',
+    slug: `state-of-mcp-servers-${period}`, kind: 'vertical', status: 'draft',
     title: `The State of MCP Servers · ${period.toUpperCase()}`,
     subtitle: `MCP is the newest way to give an AI tools — and ${total} of the servers in our catalog were scanned straight from their repositories. The protocol is young; the production hygiene shows it.`,
     coined_term: 'the open-tool gap',
@@ -237,7 +237,7 @@ async function buildOssVsSaas(period: string, asOf: string) {
   const secGap = (compare.frames.find(f => f.key === 'security') || { oss: 0, saas: 0 }) as any
   const lead = secGap.oss >= secGap.saas ? 'open source' : 'closed SaaS'
   return {
-    slug: `open-source-vs-closed-saas-${period}`, kind: 'flagship', status: 'draft',
+    slug: `open-source-vs-closed-saas-${period}`, kind: 'comparison', status: 'draft',
     title: `Open Source vs Closed SaaS · ${period.toUpperCase()}`,
     subtitle: `Does opening the code make a product more production-ready — or less? We compared ${oss.length} open-source tools against ${saas.length} closed web apps on the frames both can be measured on.`,
     coined_term: 'the openness premium',
