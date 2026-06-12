@@ -163,19 +163,18 @@ const RA_DOT: Record<RepoAuditStatus, { c: string; m: string }> = {
   pass: { c: '#5C8A3E', m: '✓' }, warn: { c: '#A8742E', m: '!' }, fail: { c: '#C24A33', m: '✕' }, na: { c: '#B3A992', m: '–' },
 }
 const RA_CSS = `
-.l-ra{margin-top:18px}
-.l-rah{display:flex;align-items:baseline;gap:8px;margin-bottom:3px}
-.l-rasum{margin-left:auto;display:flex;gap:7px;font-family:'JetBrains Mono',monospace;font-size:11px}
-.l-rasum b{font-weight:600}
-.l-ranote{font-size:11px;color:#6F6757;margin-bottom:12px;line-height:1.5}
-.l-racard{display:flex;gap:9px;padding:9px 0;border-top:1px solid #EFE4CC}
-.l-racard:first-of-type{border-top:none}
-.l-radot{width:16px;height:16px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;margin-top:1px}
+.l-ra{margin-top:18px;text-align:left}
+.l-rasum{display:flex;gap:14px;font-family:'JetBrains Mono',monospace;font-size:11.5px;margin:7px 0 3px}
+.l-rasum b{font-weight:700}
+.l-ranote{font-size:11px;color:#9A9080;margin-bottom:15px;line-height:1.5}
+.l-racheck{display:flex;gap:9px;padding:11px 0;border-top:1px solid #EFE4CC}
+.l-racheck:first-of-type{border-top:none}
+.l-radot{flex:0 0 auto;width:13px;font-size:13px;font-weight:700;line-height:1.5}
 .l-ralabel{font-weight:600;font-size:13.5px;color:#2E2820}
 .l-rafind{font-size:12.5px;color:#5A5347;margin-top:1px;line-height:1.45}
-.l-rawhy{font-size:11.5px;color:#8A8170;margin-top:2px;line-height:1.45}
-.l-raev{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#97600F;margin-top:3px;word-break:break-all}
-.l-rana{opacity:.55}
+.l-rawhy{font-size:11.5px;color:#9A9080;margin-top:4px;line-height:1.4}
+.l-raev{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#97600F;margin-top:4px;word-break:break-all}
+.l-rana{opacity:.5}
 `
 export function RepoAuditCards({ audit }: { audit: RepoAudit }) {
   const checks = audit.checks || {}
@@ -185,24 +184,23 @@ export function RepoAuditCards({ audit }: { audit: RepoAudit }) {
   return (
     <div className="l-ra">
       <style dangerouslySetInnerHTML={{ __html: RA_CSS }} />
-      <div className="l-rah">
-        <div className="l-lh">◆ repo teardown</div>
-        <div className="l-rasum">
-          <span style={{ color: RA_DOT.pass.c }}><b>{s.pass}</b> pass</span>
-          <span style={{ color: RA_DOT.warn.c }}><b>{s.warn}</b> warn</span>
-          <span style={{ color: RA_DOT.fail.c }}><b>{s.fail}</b> fail</span>
-        </div>
+      <div className="l-lh">◆ repo teardown</div>
+      <div className="l-rasum">
+        <span style={{ color: RA_DOT.pass.c }}><b>{s.pass}</b> pass</span>
+        {s.warn > 0 && <span style={{ color: RA_DOT.warn.c }}><b>{s.warn}</b> warn</span>}
+        <span style={{ color: RA_DOT.fail.c }}><b>{s.fail}</b> fail</span>
+        {s.na > 0 && <span style={{ color: RA_DOT.na.c }}><b>{s.na}</b> n/a</span>}
       </div>
-      <div className="l-ranote">Deep code checks on the source{audit.repo ? ` · ${audit.repo}` : ''}. Measurement facts, not a verdict.</div>
+      <div className="l-ranote">Code checks on the source{audit.repo ? ` · ${audit.repo}` : ''} — facts, not a verdict.</div>
       {present.map(c => {
         const ck = checks[c.key]; const dot = RA_DOT[ck.status]
         return (
-          <div key={c.key} className={`l-racard ${ck.status === 'na' ? 'l-rana' : ''}`}>
-            <span className="l-radot" style={{ background: dot.c }}>{dot.m}</span>
-            <div>
+          <div key={c.key} className={`l-racheck ${ck.status === 'na' ? 'l-rana' : ''}`}>
+            <span className="l-radot" style={{ color: dot.c }}>{dot.m}</span>
+            <div style={{ flex: 1 }}>
               <div className="l-ralabel">{c.label}</div>
               <div className="l-rafind">{ck.finding}</div>
-              {ck.status !== 'na' && <div className="l-rawhy">{c.why}</div>}
+              {(ck.status === 'fail' || ck.status === 'warn') && <div className="l-rawhy">{c.why}</div>}
               {ck.evidence && <div className="l-raev">{ck.evidence}</div>}
             </div>
           </div>
