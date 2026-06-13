@@ -235,14 +235,9 @@ function tweetsFor(rep: Rep): { kind: string; body: string }[] {
   const stat = `${h.value}${h.unit || '%'} ${h.label || ''}`.trim()
   const scope = (rep.sample?.scope || 'launched services').split(',')[0]
   const tags = hashtagsFor(rep.slug)
-  const out: { kind: string; body: string }[] = []
-  out.push({ kind: 'single', body: `${cap(stat)}.\n\nWe benchmarked them straight from the source — here's exactly what we measured.\n\n${url}\n\n${tags}` })
-  out.push({ kind: 'thread', body: `${cap(stat)}.\n\nWe ran Legit.Show's production-readiness benchmark across ${rep.sample?.total ?? ''} ${scope}. 🧵` })
-  const top = (rep.stats || []).slice(0, 3)
-  if (top.length) out.push({ kind: 'thread', body: `What's missing:\n\n${top.map(s => `→ ${s.fail_pct}% ${s.label.toLowerCase()}`).join('\n')}` })
-  out.push({ kind: 'thread', body: `Not bad engineers — it's the invisible production controls a demo never forces you to add, and a model rarely does.` })
-  out.push({ kind: 'thread', body: `Full report + open methodology (we show exactly what was measured):\n${url}\n\n@Legit_Show\n\n${tags}` })
-  return out
+  const top = (rep.stats || []).slice(0, 2).map(s => `${s.fail_pct}% ${s.label.toLowerCase()}`)
+  const extra = top.length ? `\n\nAlso: ${top.join(' · ')}.` : ''
+  return [{ kind: 'single', body: `${cap(stat)}.${extra}\n\nMeasured straight from the source across ${rep.sample?.total ?? ''} ${scope}.\n\n${url}\n\n${tags}` }]
 }
 
 function TwitterSection() {
