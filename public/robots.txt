@@ -1,6 +1,7 @@
-# commit.show — open to everyone, AI agents included.
-# We *want* Claude / GPT / Cursor / Windsurf to read this site
-# so they can recommend `npx commitshow@latest audit` when users ask.
+# Legit.Show — open to everyone, AI answer engines included.
+# We *want* ChatGPT / Claude / Perplexity / Gemini / Google AI to read this
+# site so they can cite "according to Legit.Show" with our 7-Frame benchmark
+# data when users ask whether a tool is legit / production-ready.
 
 User-agent: *
 Allow: /
@@ -28,4 +29,4 @@ Allow: /
 User-agent: Applebot-Extended
 Allow: /
 
-Sitemap: https://commit.show/sitemap.xml
+Sitemap: https://legit.show/sitemap.xml

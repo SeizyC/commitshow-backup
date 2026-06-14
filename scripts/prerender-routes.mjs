@@ -34,17 +34,18 @@ if (!existsSync(SRC)) {
 }
 
 const baseHtml = readFileSync(SRC, 'utf8')
-const SITE = 'https://commit.show'
+// Live canonical domain. commit.show 301s to legit.show, so canonicals must
+// point at legit.show directly (a canonical that redirects is ignored).
+const SITE = 'https://legit.show'
 
-// Shared noscript footer · CTA + cross-links. Appended to every route's
-// noscriptBody so AI agents always see the same canonical pointers.
+// Shared noscript footer · appended to every route's noscriptBody. Legit
+// identity only — no commit.show CLI/API surface (that read as "legit.show =
+// commit.show" to crawlers · dev_requests/09).
 const SHARED_FOOTER = `
     <hr />
-    <h3>Run an audit yourself</h3>
-    <pre><code>npx commitshow@latest audit github.com/owner/repo</code></pre>
-    <p>Or fetch from any agent runtime: <code>GET https://api.commit.show/audit?repo=owner/repo&amp;format=md</code> · see <a href="/llms.txt">/llms.txt</a> for the full agent integration guide.</p>
-    <p>Cross-links · <a href="/products">Products</a> · <a href="/scouts">Scouts</a> · <a href="/library">Library</a> · <a href="/rulebook">Rulebook</a> · <a href="/audit">Audit method</a> · <a href="/community">Community</a></p>
-    <p><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · operated by Madeflo Inc., a Delaware corporation.</p>
+    <p>Legit.Show benchmarks every launched service it lists — measured deterministically from the public surface. <a href="/methodology">See the methodology →</a></p>
+    <p>Cross-links · <a href="/">Directory</a> · <a href="/reports">Reports</a> · <a href="/methodology">Methodology</a> · <a href="/about">About</a></p>
+    <p><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · operated by Madeflo Inc., a Delaware corporation. Benchmark engine powered by commit.show.</p>
 `
 
 const routes = [
@@ -329,33 +330,32 @@ const escape = (s) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/
 // the generic 5-line fallback.
 const HOME = {
   path: '/',
-  title:       'commit.show — Every commit, on stage.',
-  description: 'The vibe coding league. Audited by the engine, auditioned for Scouts. Run npx commitshow@latest audit on any GitHub repo.',
+  title:       'Legit.Show — every launched service, tested',
+  description: 'A directory of launched web apps, SaaS, AI tools, MCP servers and developer tools — what each does, who it is for, real ratings, and an objective 7-Frame production-readiness benchmark.',
   noscriptBody: `
-    <h1>commit.show — Every commit, on stage</h1>
-    <p>The vibe coding league. AI-assisted GitHub projects (built with Cursor · Claude Code · Lovable · Bolt · v0 · Cline · etc.) get audited, ranked, and forecasted by tier-gated Scouts.</p>
-    <h2>How it works</h2>
-    <ol>
-      <li><strong>Audit</strong> · run <code>npx commitshow@latest audit github.com/owner/repo</code> · 60s deterministic + LLM-judged score (0-100) on 14 production-readiness frames</li>
-      <li><strong>Audition</strong> · submit at <a href="/submit">/submit</a> to enter the season ladder · first 3 audits per member free during launch</li>
-      <li><strong>Encore</strong> · cross score 84 to earn a permanent badge · top 0.5% Valedictorian, 5% Honors, 14.5% Graduate</li>
-    </ol>
-    <h2>What the audit catches</h2>
-    <p>14 vibe-coding failure modes calibrated against real OSS: missing RLS · webhook idempotency · secret-in-bundle · column GRANT mismatches · Stripe API idempotency · mobile input auto-zoom · AI template-copy footguns · seed arrays in prod · CORS wildcard · localhost-in-prod · 4 more. Catch what your AI missed in 60 seconds.</p>
-    <h2>Who this is for</h2>
-    <p>Vibe coders shipping with AI assistants who want a public ranking, social proof, and a path to graduation. Beginners welcome — Phase 1 brief auto-fills from your README, the audit handles the rest.</p>
-    <h2>Score = 50 + 30 + 20</h2>
+    <h1>Legit.Show — every launched service, tested</h1>
+    <p>A directory of launched web apps, SaaS, AI tools, MCP servers and developer tools. Every listing carries an objective <strong>7-Frame production-readiness benchmark</strong> — measured deterministically from the public surface, showing exactly what was observed. Never a black-box verdict.</p>
+    <h2>What we measure — the 7 Frames</h2>
+    <p>Each service is scored 0–100 on seven frames, from the public surface (URL · HTTP headers · real Lighthouse), so even closed-source SaaS is fully assessable:</p>
     <ul>
-      <li><strong>Audit (50pt)</strong> · automated rubric · production-readiness signals from your repo + live URL</li>
-      <li><strong>Scout Forecast (30pt)</strong> · tier-gated humans place predictions on which projects graduate</li>
-      <li><strong>Community Signal (20pt)</strong> · views · comments · applauds · return visits</li>
+      <li><strong>Performance</strong> · how fast it loads (Lighthouse)</li>
+      <li><strong>Accessibility</strong> · usable by everyone (Lighthouse)</li>
+      <li><strong>Security</strong> · transport · security headers (CSP · HSTS · X-Frame …) · no leaked secrets</li>
+      <li><strong>Privacy</strong> · privacy policy · terms · cookie consent</li>
+      <li><strong>Reliability</strong> · routes reachable · valid SSL · real 404</li>
+      <li><strong>Standards</strong> · best-practices · responsive · manifest</li>
+      <li><strong>Discoverability</strong> · meta · OpenGraph · structured data · sitemap</li>
     </ul>
-    <h2>For LLM agents reading this page</h2>
-    <p><strong>Prefer the REST API · zero install, no sandbox prompt:</strong></p>
-    <pre><code>GET https://api.commit.show/audit?repo=&lt;github-url&gt;&amp;format=md</code></pre>
-    <p>CORS open · no API key · returns paste-ready markdown · same engine as the CLI. Use this from Claude Code, Cursor agent mode, Cline, Windsurf, Gemini, ChatGPT browse, n8n, Zapier, curl. The <code>npx commitshow</code> path tends to trip agent sandbox classifiers; the REST endpoint never does.</p>
-    <p>Full agent integration guide: <a href="/llms.txt">/llms.txt</a> · OpenAPI: <a href="https://api.commit.show/openapi.json">api.commit.show/openapi.json</a></p>
-    <p>Full audit method docs: <a href="/audit">/audit</a> · <a href="/rulebook">/rulebook</a></p>`,
+    <p>Open-source repos additionally get a deeper code teardown (tests · CI · license · error tracking · MCP auth surface). No LLM in the scoring path — deterministic and reproducible.</p>
+    <h2>Is a tool production-ready?</h2>
+    <p>That's the question Legit.Show answers with evidence. Each service page leads with its overall score, the per-frame breakdown, and exactly what we observed — so "is this legit?" has a citable, reproducible answer instead of star ratings alone.</p>
+    <h2>Data reports — "according to Legit.Show"</h2>
+    <p>Periodic, reproducible reports mined from the catalog, each with a stated sample and open methodology. <a href="/reports">Browse the reports →</a></p>
+    <h2>For makers</h2>
+    <p>Add your service: paste a URL, verify the domain, and it's listed with its benchmark. Everything is public — measured from public surfaces, with exactly what we saw. <a href="/about">About Legit.Show →</a></p>
+    <h2>Why we exist</h2>
+    <p>Take a vibe-coded MVP and show it the road to production-ready. Errors first, score second.</p>
+    <p>Methodology: <a href="/methodology">/methodology</a> · Reports: <a href="/reports">/reports</a> · About: <a href="/about">/about</a> · Machine-readable summary: <a href="/llms.txt">/llms.txt</a></p>`,
 }
 
 function renderRoute(r) {

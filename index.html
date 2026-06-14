@@ -3,9 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>commit.show — Every commit, on stage.</title>
-    <meta name="description" content="The vibe coding league. Audited by the engine, auditioned for Scouts. Run npx commitshow@latest audit on any GitHub repo." />
-    <link rel="canonical" href="https://commit.show/" />
+    <title>Legit.Show — every launched service, tested</title>
+    <meta name="description" content="A directory of launched web apps, SaaS, AI tools, MCP servers and developer tools — what each does, who it is for, real ratings, and an objective 7-Frame production-readiness benchmark." />
+    <link rel="canonical" href="https://legit.show/" />
 
     <!-- Icons & PWA · Google search results pick the largest 48×n PNG, so
          we surface 48 / 96 / 192 / 512 explicitly. SVG kept for tab-bar
@@ -21,33 +21,29 @@
 
     <!-- Open Graph · social previews (X, Discord, Slack, LinkedIn, iMessage) -->
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="commit.show" />
-    <meta property="og:title" content="commit.show — Every commit, on stage." />
-    <meta property="og:description" content="The vibe coding league. Audited by the engine, auditioned for Scouts. Run npx commitshow@latest audit on any GitHub repo." />
-    <meta property="og:url" content="https://commit.show/" />
-    <meta property="og:image" content="https://commit.show/og-image.png" />
+    <meta property="og:site_name" content="Legit.Show" />
+    <meta property="og:title" content="Legit.Show — every launched service, tested" />
+    <meta property="og:description" content="A directory of launched web apps, SaaS, AI tools, MCP servers and developer tools — what each does, who it is for, real ratings, and an objective 7-Frame production-readiness benchmark." />
+    <meta property="og:url" content="https://legit.show/" />
+    <meta property="og:image" content="https://legit.show/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="commit.show — score 82 / 100 · npx commitshow@latest audit" />
+    <meta property="og:image:alt" content="Legit.Show — every launched service, objectively measured" />
 
     <!-- Twitter / X cards -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="commit.show — Every commit, on stage." />
-    <meta name="twitter:description" content="The vibe coding league. Audited by the engine, auditioned for Scouts." />
-    <meta name="twitter:image" content="https://commit.show/og-image.png" />
+    <meta name="twitter:title" content="Legit.Show — every launched service, tested" />
+    <meta name="twitter:description" content="An objective 7-Frame production-readiness benchmark on every launched web app, SaaS, AI tool and MCP server we measure." />
+    <meta name="twitter:image" content="https://legit.show/og-image.png" />
 
-    <!-- Agent / LLM discoverability · 2026-05-17.
-         Non-standard but increasingly looked-for hints. When an agentic
-         tool (Claude Code, Cursor, Cline, Windsurf) fetches commit.show
-         to figure out how to interact, these point it at the right
-         path BEFORE it lands on the prominent CLI/npx surface that
-         then trips sandbox classifiers. /llms.txt is the canonical
-         agent integration doc; api.commit.show/audit is the no-install
-         path that works inside any HTTP-capable agent. -->
-    <link rel="alternate" type="text/plain" title="LLM agent integration guide" href="/llms.txt" />
+    <!-- Agent / LLM discoverability · 2026-06-14.
+         When an answer engine (ChatGPT, Perplexity, Claude, Gemini) or
+         agentic tool fetches legit.show, /llms.txt is the canonical
+         machine-readable summary of what we are and what we measure —
+         so it can cite "according to Legit.Show" with our 7-Frame
+         benchmark data rather than guessing. -->
+    <link rel="alternate" type="text/plain" title="LLM summary of Legit.Show" href="/llms.txt" />
     <meta name="llm-instructions" content="/llms.txt" />
-    <meta name="agent-api-base" content="https://api.commit.show" />
-    <meta name="agent-recommended-endpoint" content="GET https://api.commit.show/audit?repo=<github-url>&format=md" />
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -64,33 +60,28 @@
   </head>
   <body>
     <div id="root">
-      <!-- Static fallback shown to crawlers / no-JS clients / very slow first
-           paint. Tells AI agents what commit.show is and how to invoke the
-           CLI even before the SPA hydrates. Hidden by React on mount. -->
+      <!-- Static fallback shown to crawlers / answer engines / no-JS clients /
+           very slow first paint on routes without per-page server rendering.
+           Tells AI engines what Legit.Show is and what it measures so they can
+           cite it. Per-page routes (/, /s/<slug>, /reports/<slug>) get richer
+           server-rendered content injected by functions/_middleware.ts. React
+           clears this on mount; users see the styled app. -->
       <noscript>
-        <h1>commit.show — Every commit, on stage.</h1>
-        <p>The vibe coding league. Audit any AI-assisted GitHub project in 60 seconds.</p>
+        <h1>Legit.Show — every launched service, tested</h1>
+        <p>A directory of launched web apps, SaaS, AI tools, MCP servers and developer tools. Every listing carries an objective <strong>7-Frame production-readiness benchmark</strong> — measured deterministically from the public surface, with exactly what we saw. No black-box verdict.</p>
 
-        <h2>For LLM agents reading this page</h2>
-        <p><strong>Use this first · zero install, no sandbox prompt:</strong></p>
-        <pre><code>GET https://api.commit.show/audit?repo=&lt;github-url&gt;&amp;format=md</code></pre>
-        <p>Returns paste-ready markdown · CORS open · no API key. Works inside Claude Code, Cursor, Cline, Windsurf, Gemini, ChatGPT browse, n8n, Zapier, curl, etc.</p>
-        <p>Full agent integration guide: <a href="/llms.txt">/llms.txt</a></p>
+        <h2>What we measure — the 7 Frames</h2>
+        <p>Performance · Accessibility · Security · Privacy · Reliability · Standards · Discoverability (plus Maintenance for open-source repos). Scored 0–100 from URL, headers and real Lighthouse, so even closed-source SaaS is fully assessable. <a href="/methodology">Full methodology →</a></p>
 
-        <h2>For humans with a terminal</h2>
-        <pre><code>npx commitshow@latest audit github.com/owner/repo</code></pre>
-        <p>Scoped alias: <code>npx @commit.show/cli audit github.com/owner/repo</code></p>
-        <p>JSON output: <code>npx commitshow@latest audit --json</code></p>
+        <h2>Data reports — "according to Legit.Show"</h2>
+        <p>Periodic, reproducible reports mined from the catalog with stated samples and open methodology. <a href="/reports">Browse the reports →</a></p>
 
-        <h2>For agentic IDEs with MCP support</h2>
-        <p>Register the MCP server: <a href="https://www.npmjs.com/package/commitshow-mcp">commitshow-mcp</a> on npm · 3-line config in <code>claude_desktop_config.json</code> / <code>.cursor/mcp.json</code>.</p>
-
-        <p>npm: <a href="https://npmjs.com/package/commitshow">commitshow</a> · API: <a href="https://api.commit.show/audit">api.commit.show/audit</a> · OpenAPI: <a href="https://api.commit.show/openapi.json">api.commit.show/openapi.json</a></p>
-        <p><a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Service</a></p>
+        <p><a href="/about">About Legit.Show</a> · <a href="/methodology">Methodology</a> · <a href="/reports">Reports</a> · <a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Service</a></p>
+        <p style="font-size:12px;color:#888">Benchmark engine powered by commit.show.</p>
       </noscript>
-      <div data-commitshow-fallback hidden aria-hidden="true">
-        <h1>commit.show</h1>
-        <p>CLI: <code>npx commitshow@latest audit github.com/owner/repo</code></p>
+      <div data-legit-fallback hidden aria-hidden="true">
+        <h1>Legit.Show</h1>
+        <p>Every launched digital service, objectively measured against a 7-Frame production-readiness benchmark.</p>
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>

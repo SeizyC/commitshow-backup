@@ -242,6 +242,13 @@ async function logVisitorHit(env: Env, req: Request, response: Response): Promis
 const SITE = 'https://legit.show'
 const supa = (env: Env) => env.SUPABASE_URL ?? 'https://tekemubwihsjdzittoqf.supabase.co'
 
+type Bench = {
+  form: string; overall: number; schema?: number
+  performance?: number | null; accessibility?: number | null; security?: number | null
+  privacy?: number | null; reliability?: number | null; standards?: number | null
+  discoverability?: number | null; maintenance?: number | null
+  signals?: { frames?: Record<string, Record<string, unknown>> } & Record<string, unknown>
+}
 type Listing = {
   id: string; slug: string; name: string; domain: string; url: string
   platform: string | null; category: string | null
@@ -249,11 +256,12 @@ type Listing = {
   who_for: string[] | null; features: string[] | null
   pricing: string | null; image_url: string | null; icon_url: string | null
   has_pricing: boolean; info_as_of: string | null
+  benchmark: Bench | null
 }
 async function getListing(env: Env, slug: string): Promise<Listing | null> {
   const key = env.SUPABASE_ANON_KEY ?? ''
   if (!key) return null
-  const cols = 'id,slug,name,domain,url,platform,category,tagline,description,who_for,features,pricing,image_url,icon_url,has_pricing,info_as_of'
+  const cols = 'id,slug,name,domain,url,platform,category,tagline,description,who_for,features,pricing,image_url,icon_url,has_pricing,info_as_of,benchmark'
   const r = await fetch(`${supa(env)}/rest/v1/listings?slug=eq.${encodeURIComponent(slug)}&select=${cols}&limit=1`,
     { headers: { apikey: key, Authorization: `Bearer ${key}` } })
   if (!r.ok) return null
@@ -323,6 +331,91 @@ function reportBodyHtml(rep: ReportRow): string {
   if (rep.compare?.frames?.length) o += `<h2>${esc(rep.compare.oss_label)} vs ${esc(rep.compare.saas_label)}</h2><ul>${rep.compare.frames.map(fr => `<li>${esc(fr.label)}: ${esc(rep.compare!.oss_label)} ${fr.oss} \u00b7 ${esc(rep.compare!.saas_label)} ${fr.saas}</li>`).join('')}</ul>`
   if (rep.body?.length) o += rep.body.map(b => `<h2>${esc(b.h)}</h2><p>${esc(b.md.replace(/\*\*/g, ''))}</p>`).join('')
   o += `<p style="margin-top:30px"><a href="/methodology">How this was measured \u2192</a></p></main>`
+  return o
+}
+
+// \u2500\u2500\u2500 Product page (/s/<slug>) server-render \u00b7 the AEO keystone \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// AI answer engines field "is <tool> legit / production-ready / secure?" and the
+// citable answer is our 7-Frame measurement. That data was client-render-only,
+// so crawlers saw nothing. We now SSR the benchmark (overall + per-frame scores
+// + evidence) and an answer-first H2 into #root, mirroring reportBodyHtml. React
+// (createRoot) replaces it on mount so humans get the styled interactive page.
+const FRAME_META: { key: string; label: string }[] = [
+  { key: 'performance',     label: 'Performance' },
+  { key: 'accessibility',   label: 'Accessibility' },
+  { key: 'security',        label: 'Security' },
+  { key: 'privacy',         label: 'Privacy' },
+  { key: 'reliability',     label: 'Reliability' },
+  { key: 'standards',       label: 'Standards' },
+  { key: 'discoverability', label: 'Discoverability' },
+  { key: 'maintenance',     label: 'Maintenance' },
+]
+type Verdict = { question: string; answer: string; overall: number; frames: { label: string; score: number }[]; evidence: string[] }
+// Descriptive, never a verdict word ("measurement only, never judgment"). States
+// the measured number + strongest/weakest frame so an engine can quote a fact.
+function benchVerdict(name: string, b: Bench): Verdict {
+  const frames = FRAME_META
+    .map(f => ({ label: f.label, score: (b as Record<string, unknown>)[f.key] as number | null | undefined }))
+    .filter(f => typeof f.score === 'number') as { label: string; score: number }[]
+  const sorted = [...frames].sort((a, c) => c.score - a.score)
+  const top = sorted[0], low = sorted[sorted.length - 1]
+  const formTxt = b.form === 'web' ? 'public-surface' : b.form
+  let answer = `Legit.Show measured ${name} at ${b.overall} out of 100 on its 7-Frame production-readiness benchmark (${formTxt} assessment).`
+  if (top && low && top.label !== low.label) answer += ` Its strongest frame is ${top.label} (${top.score}); its weakest is ${low.label} (${low.score}).`
+  answer += ' Every frame is measured deterministically from the public surface \u2014 exactly what was observed is shown below.'
+  // Evidence bullets from signals.frames (human-readable, bounded).
+  const fr = b.signals?.frames || {}
+  const ev: string[] = []
+  const sec = fr.security as Record<string, unknown> | undefined
+  if (sec) {
+    const have = ['csp', 'hsts', 'xFrame', 'xContent', 'referrer'].filter(k => sec[k])
+    if (have.length) ev.push(`Security headers present: ${have.map(k => ({ csp: 'CSP', hsts: 'HSTS', xFrame: 'X-Frame-Options', xContent: 'X-Content-Type-Options', referrer: 'Referrer-Policy' } as Record<string, string>)[k]).join(', ')}.`)
+    const missing = ['csp', 'hsts'].filter(k => !sec[k])
+    if (missing.length) ev.push(`No ${missing.map(k => k === 'csp' ? 'Content-Security-Policy' : 'HSTS').join(' and no ')}.`)
+    if (sec.https) ev.push('Served over HTTPS with a valid certificate.')
+    if (Array.isArray(sec.secretsFound) && (sec.secretsFound as unknown[]).length) ev.push('Exposed secrets detected on the public surface.')
+  }
+  const perf = fr.performance as Record<string, unknown> | undefined
+  if (perf && typeof perf.perf === 'number') ev.push(`Lighthouse performance score ${perf.perf}/100${typeof perf.responseMs === 'number' ? ` (${perf.responseMs} ms to first byte)` : ''}.`)
+  const rel = fr.reliability as Record<string, unknown> | undefined
+  if (rel) {
+    if (rel.proper404) ev.push('Returns a proper 404 for unknown routes.')
+    if (typeof rel.routesOk === 'number' && typeof rel.routesChecked === 'number') ev.push(`${rel.routesOk} of ${rel.routesChecked} sampled routes reachable.`)
+  }
+  const priv = fr.privacy as Record<string, unknown> | undefined
+  if (priv) {
+    if (priv.privacyPage) ev.push('Has a reachable privacy policy.'); else ev.push('No privacy policy found.')
+    if (!priv.consentBanner) ev.push('Sets cookies / loads scripts with no consent prompt.')
+  }
+  const disc = fr.discoverability as Record<string, unknown> | undefined
+  if (disc) {
+    const d = ['structuredData', 'sitemap', 'ogImage', 'canonical'].filter(k => disc[k])
+    if (d.length) ev.push(`Discoverable: ${d.map(k => ({ structuredData: 'structured data', sitemap: 'sitemap', ogImage: 'OpenGraph image', canonical: 'canonical URL' } as Record<string, string>)[k]).join(', ')}.`)
+  }
+  return { question: `Is ${name} production-ready?`, answer, overall: b.overall, frames, evidence: ev.slice(0, 8) }
+}
+function listingBodyHtml(l: Listing, stats: { avg: number; count: number }, v: Verdict | null): string {
+  const esc = (x: unknown) => String(x ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const bar = (label: string, score: number) => `<li style="margin:9px 0"><strong>${esc(label)}</strong> \u2014 ${score}/100<div style="height:6px;background:#efe6d2;border-radius:3px;margin:5px 0;max-width:440px"><span style="display:block;height:100%;width:${score}%;background:#c2683e;border-radius:3px"></span></div></li>`
+  const cat = l.category || l.platform || 'service'
+  let o = `<main style="max-width:760px;margin:0 auto;padding:90px 24px 80px;font-family:Georgia,serif;color:#211c15;line-height:1.6">`
+  o += `<p style="font-family:monospace;font-size:12px;color:#97600f;text-transform:uppercase;letter-spacing:.08em">${esc(cat)}</p>`
+  o += `<h1 style="font-size:36px;line-height:1.1;margin:8px 0 12px">${esc(l.name)}</h1>`
+  const what = clean(l.tagline || l.description, 280)
+  if (what) o += `<p style="font-size:17px;color:#4a4438">${esc(what)}</p>`
+  if (stats.count > 0) o += `<p style="color:#6f6757;font-size:15px">Rated ${esc(stats.avg)}\u2605 by ${esc(stats.count)} on Legit.Show.</p>`
+  if (v) {
+    o += `<div style="background:#211c15;color:#e0a92e;border-radius:16px;padding:30px;text-align:center;margin:24px 0"><div style="font-size:80px;font-weight:700;line-height:1">${esc(v.overall)}<span style="font-size:30px;color:#e9e2d4">/100</span></div><div style="color:#e9e2d4;font-size:15px;margin-top:6px">7-Frame production-readiness \u2014 according to Legit.Show</div></div>`
+    o += `<h2 style="font-size:24px;margin:24px 0 8px">${esc(v.question)}</h2>`
+    o += `<p style="font-size:16px;color:#3c362c">${esc(v.answer)}</p>`
+    if (v.frames.length) o += `<h2 style="font-size:21px;margin:26px 0 6px">The 7 Frames</h2><ul style="list-style:none;padding:0">${v.frames.map(f => bar(f.label, f.score)).join('')}</ul>`
+    if (v.evidence.length) o += `<h2 style="font-size:21px;margin:26px 0 6px">What we measured</h2><ul style="color:#3c362c">${v.evidence.map(e => `<li style="margin:5px 0">${esc(e)}</li>`).join('')}</ul>`
+  } else {
+    o += `<p style="color:#6f6757">This service has not been benchmarked yet.</p>`
+  }
+  if (Array.isArray(l.who_for) && l.who_for.length) o += `<h2 style="font-size:21px;margin:26px 0 6px">Who it's for</h2><p>${esc(l.who_for.slice(0, 6).join(' \u00b7 '))}</p>`
+  if (l.pricing) o += `<h2 style="font-size:21px;margin:26px 0 6px">Pricing</h2><p>${esc(clean(l.pricing, 200))}</p>`
+  o += `<p style="margin-top:30px"><a href="${esc(l.url)}" rel="nofollow">Visit ${esc(l.name)} \u2192</a> \u00b7 <a href="/methodology">How this was measured \u2192</a></p></main>`
   return o
 }
 function rewriteHtml(res: Response, opts: { title: string; description: string; canonical: string; ogImage?: string; jsonld: unknown[]; bodyHtml?: string }): Response {
@@ -466,8 +559,15 @@ async function directoryMetaResponse(env: Env, request: Request): Promise<Respon
   const canonical = `${SITE}/s/${listing.slug}`
   const blurb = clean(listing.tagline || listing.description, 160)
   const ratingTxt = stats.count > 0 ? `Rated ${stats.avg}★ by ${stats.count}. ` : ''
-  const title = `${listing.name} — ${clean(listing.tagline || cat, 60)} | Legit.Show`
-  const description = clean(`${blurb}. ${ratingTxt}Features, pricing, reviews and an objective benchmark on Legit.Show.`, 200)
+  const bench = listing.benchmark
+  const verdict = bench ? benchVerdict(listing.name, bench) : null
+  // Lead the snippet with our unique data point (the score) — that's what an
+  // answer engine quotes for "is <tool> production-ready?".
+  const benchTxt = bench ? `Benchmarked ${bench.overall}/100 for production-readiness. ` : ''
+  const title = bench
+    ? `${listing.name} — ${bench.overall}/100 production-readiness | Legit.Show`
+    : `${listing.name} — ${clean(listing.tagline || cat, 60)} | Legit.Show`
+  const description = clean(`${blurb}. ${benchTxt}${ratingTxt}What it does, who it's for, and an objective 7-Frame benchmark on Legit.Show.`, 200)
   const ogImage = listing.image_url || listing.icon_url || `${SITE}/og-image.png`
   const app: Record<string, unknown> = {
     '@type': 'SoftwareApplication', '@id': `${canonical}#app`,
@@ -479,7 +579,15 @@ async function directoryMetaResponse(env: Env, request: Request): Promise<Respon
   if (Array.isArray(listing.features) && listing.features.length) app.featureList = listing.features.slice(0, 12)
   if (stats.count > 0) app.aggregateRating = { '@type': 'AggregateRating', ratingValue: stats.avg, reviewCount: stats.count, bestRating: 5, worstRating: 1 }
   if (!listing.has_pricing && !clean(listing.pricing)) app.offers = { '@type': 'Offer', price: 0, priceCurrency: 'USD' }
-  const graph = { '@context': 'https://schema.org', '@graph': [
+  // Benchmark as labelled, machine-readable data points — the unique signal no
+  // other directory exposes. Overall + each assessed frame.
+  if (bench && verdict) {
+    app.additionalProperty = [
+      { '@type': 'PropertyValue', name: 'Production-readiness benchmark (overall)', value: bench.overall, maxValue: 100, measurementTechnique: 'Legit.Show 7-Frame benchmark' },
+      ...verdict.frames.map(f => ({ '@type': 'PropertyValue', name: `${f.label} frame`, value: f.score, maxValue: 100 })),
+    ]
+  }
+  const graph: Record<string, unknown>[] = [
     { '@type': 'WebPage', '@id': canonical, url: canonical, name: title, description, primaryImageOfPage: ogImage, isPartOf: { '@type': 'WebSite', name: 'Legit.Show', url: SITE } },
     app,
     { '@type': 'BreadcrumbList', itemListElement: [
@@ -487,8 +595,22 @@ async function directoryMetaResponse(env: Env, request: Request): Promise<Respon
       { '@type': 'ListItem', position: 2, name: cat, item: `${SITE}/?cat=${encodeURIComponent(cat)}` },
       { '@type': 'ListItem', position: 3, name: listing.name, item: canonical },
     ] },
-  ] }
-  const out = rewriteHtml(assetRes, { title, description, canonical, ogImage, jsonld: [graph] })
+  ]
+  // FAQPage — answer-first Q&A that maps directly to the queries we want to own
+  // ("is <tool> production-ready / secure / legit?"). Answer engines lift these.
+  if (bench && verdict) {
+    const faq: { '@type': 'Question'; name: string; acceptedAnswer: { '@type': 'Answer'; text: string } }[] = [
+      { '@type': 'Question', name: verdict.question, acceptedAnswer: { '@type': 'Answer', text: clean(verdict.answer, 600) } },
+    ]
+    const secScore = typeof bench.security === 'number' ? bench.security : null
+    if (secScore !== null) {
+      const secEv = verdict.evidence.filter(e => /header|HTTPS|secret|CSP|HSTS/i.test(e)).join(' ')
+      faq.push({ '@type': 'Question', name: `Is ${listing.name} secure?`, acceptedAnswer: { '@type': 'Answer', text: clean(`Legit.Show measured ${listing.name}'s Security frame at ${secScore}/100. ${secEv}`, 500) } })
+    }
+    faq.push({ '@type': 'Question', name: `How does Legit.Show measure ${listing.name}?`, acceptedAnswer: { '@type': 'Answer', text: 'Legit.Show scores seven frames — Performance, Accessibility, Security, Privacy, Reliability, Standards and Discoverability — deterministically from the public surface (URL, HTTP headers, real Lighthouse), with no LLM in the scoring path. See legit.show/methodology.' } })
+    graph.push({ '@type': 'FAQPage', '@id': `${canonical}#faq`, mainEntity: faq })
+  }
+  const out = rewriteHtml(assetRes, { title, description, canonical, ogImage, jsonld: [{ '@context': 'https://schema.org', '@graph': graph }], bodyHtml: listingBodyHtml(listing, stats, verdict) })
   const r = new Response(out.body, out); r.headers.set('x-legit-seo', 'listing'); r.headers.set('x-legit-slug', listing.slug); return r
 }
 
