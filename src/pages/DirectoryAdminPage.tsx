@@ -209,7 +209,7 @@ export function DirectoryAdminPage() {
 // stats as the OG card / cite block) for admin QC. A later routine posts the
 // approved ones to @Legit_Show. Account: https://x.com/Legit_Show
 type Draft = { id: string; kind: string; source_slug: string | null; group_id: string | null; idx: number; body: string; status: string }
-type Rep = { slug: string; title: string; hero_stat: { value: number; unit?: string; label: string } | null; stats: { label: string; fail_pct: number | null }[] | null; sample: { total: number; scope: string } | null }
+type Rep = { slug: string; title: string; hero_stat: { value: number; unit?: string; label: string; n: number } | null; stats: { label: string; fail_pct: number | null }[] | null; sample: { total: number; scope: string; noun?: string; early?: boolean } | null }
 
 const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s)
 
@@ -232,12 +232,23 @@ function tweetsFor(rep: Rep): { kind: string; body: string }[] {
   const h = rep.hero_stat
   if (!h) return []
   const url = `legit.show/reports/${rep.slug}`
-  const stat = `${h.value}${h.unit || '%'} ${h.label || ''}`.trim()
-  const scope = (rep.sample?.scope || 'launched services').split(',')[0]
   const tags = hashtagsFor(rep.slug)
+  // Descriptive denominator: the hero stat's own n + sample noun — never the
+  // larger sample.total (that's the projection error · dev_requests/10).
+  const n = h.n
+  const noun = rep.sample?.noun || (rep.sample?.scope || 'launched services').split(',')[0]
+  // Early-findings reports are NOT confident marketing leads (§09/§06 §6.5).
+  // They get an explicitly-framed "early read" tweet, scoped, no projection,
+  // and no "Also:" secondary stats (those are small-n too).
+  if (rep.sample?.early) {
+    const body = `Early read — of the ${n} ${noun}, ${h.value}${h.unit || '%'} ${h.label || ''}.`.trim()
+      + `\n\nSmall sample, growing. Measured straight from the source — exactly what we found.\n\n${url}\n\n${tags}`
+    return [{ kind: 'single', body }]
+  }
+  const stat = `${h.value}${h.unit || '%'} ${h.label || ''}`.trim()
   const top = (rep.stats || []).slice(0, 2).map(s => `${s.fail_pct}% ${s.label.toLowerCase()}`)
   const extra = top.length ? `\n\nAlso: ${top.join(' · ')}.` : ''
-  return [{ kind: 'single', body: `${cap(stat)}.${extra}\n\nMeasured straight from the source across ${rep.sample?.total ?? ''} ${scope}.\n\n${url}\n\n${tags}` }]
+  return [{ kind: 'single', body: `${cap(stat)}.${extra}\n\nMeasured straight from the source — across ${n} ${noun}.\n\n${url}\n\n${tags}` }]
 }
 
 function TwitterSection() {
