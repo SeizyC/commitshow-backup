@@ -17,7 +17,7 @@ type CatRow = { category: string; n: number; fail_pct: number }
 type Report = {
   slug: string; kind: string; title: string; subtitle: string; coined_term: string | null
   hero_stat: { value: number; unit: string; label: string; n: number }
-  sample: { total: number; scope: string; as_of: string }
+  sample: { total: number; scope: string; as_of: string; noun?: string; early?: boolean; note?: string }
   stats: Stat[]; hall_of_fame: Tool[]; lowlights: Tool[]
   distribution?: { title: string; note: string; bands: Band[] } | null
   by_category?: { metric: string; rows: CatRow[] } | null
@@ -37,6 +37,8 @@ const CSS = `
 .rp-herov{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(64px,14vw,120px);line-height:.95;color:#E0A92E;letter-spacing:-.02em}
 .rp-herol{font-size:16px;line-height:1.5;color:#E9E2D4;max-width:520px;margin:12px auto 0}
 .rp-herocite{font-family:'JetBrains Mono',monospace;font-size:11px;color:#9A9080;margin-top:16px;letter-spacing:.04em}
+.rp-early{display:inline-block;background:#FBF3DF;border:1px solid #E7D4AC;color:#8A5A12;border-radius:8px;padding:8px 13px;font-size:13px;line-height:1.45;margin:4px 0 6px}
+.rp-samplenote{font-size:13px;color:#6F6757;line-height:1.5;margin:10px 2px 0}
 .rp-sec{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:24px;color:#211C15;margin:46px 0 4px}
 .rp-secn{font-size:13px;color:#6F6757;font-family:'JetBrains Mono',monospace;margin-bottom:20px}
 .rp-bar{padding:15px 0;border-top:1px solid #ECE3D2}
@@ -148,7 +150,11 @@ export function ReportDetailPage() {
   if (r === null) return <LegitShell><div className="l-wrap" style={{ paddingTop: 40 }}><h1>Report not found</h1><p><Link to="/reports" style={{ color: '#97600F' }}>← all reports</Link></p></div></LegitShell>
 
   const url = `${SITE}/reports/${r.slug}`
-  const citation = `According to Legit.Show’s 7-Frame benchmark (${(r.sample?.as_of || '').slice(0, 4)}), ${r.hero_stat.value}% of ${r.sample?.scope} ${r.hero_stat.label.replace(/^of [^,]+\s/, '')}. — ${url}`
+  const year = (r.sample?.as_of || '').slice(0, 4)
+  const noun = r.sample?.noun || `${r.sample?.scope} we measured`
+  // Descriptive framing (§10): "of the N <noun> we measured, X%…" — never a
+  // projection onto the whole universe. n exposed as a strength (§09).
+  const citation = `According to Legit.Show’s 7-Frame benchmark (${year}), of the ${r.hero_stat.n} ${noun}, ${r.hero_stat.value}${r.hero_stat.unit} ${r.hero_stat.label}. — ${url}`
   const copy = () => { try { navigator.clipboard?.writeText(citation) } catch { /* */ } setCopied(true) }
 
   return (
@@ -156,8 +162,9 @@ export function ReportDetailPage() {
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
       <main className="l-wrap" style={{ maxWidth: 760, paddingTop: 30, paddingBottom: 80 }}>
         <div className="l-crumb" style={{ marginBottom: 28 }}><Link to="/reports">Reports</Link> › {r.title}</div>
-        {r.coined_term && <div className="rp-eyebrow">{r.coined_term} · {(r.sample?.as_of || '').slice(0, 4)} edition</div>}
+        {r.coined_term && <div className="rp-eyebrow">{r.coined_term} · {(r.sample?.as_of || '').slice(0, 4)} edition{r.sample?.early ? ' · early findings' : ''}</div>}
         <h1 className="rp-h">{r.title}</h1>
+        {r.sample?.early && <div className="rp-early">Early findings · small sample, growing. Reported descriptively, not as a “State of” claim.</div>}
         {isAdmin && (
           <div className="rp-adminbar">
             <span className={`rp-status ${r.status === 'draft' ? 'draft' : 'pub'}`}>{r.status === 'draft' ? 'DRAFT' : 'PUBLISHED'}</span>
@@ -176,8 +183,9 @@ export function ReportDetailPage() {
         <div className="rp-hero">
           <div className="rp-herov">{r.hero_stat.value}{r.hero_stat.unit}</div>
           <div className="rp-herol">{r.hero_stat.label}</div>
-          <div className="rp-herocite">according to Legit.Show · {(r.sample?.as_of || '').slice(0, 4)}</div>
+          <div className="rp-herocite">across {r.hero_stat.n} {noun} · according to Legit.Show · {year}</div>
         </div>
+        {r.sample?.note && <p className="rp-samplenote">{r.sample.note}</p>}
 
         <h2 className="rp-sec">The 7-Frame trust gap</h2>
         <div className="rp-secn">What AI-assisted coding ships to production — and what it quietly skips. Failure rate per check (denominator = tools the check applies to).</div>

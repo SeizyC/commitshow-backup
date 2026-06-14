@@ -270,7 +270,7 @@ async function getListing(env: Env, slug: string): Promise<Listing | null> {
 type ReportRow = {
   slug: string; title: string; subtitle: string; coined_term: string | null
   hero_stat: { value: number; unit?: string; label: string; n: number } | null
-  sample: { total: number; scope: string; as_of: string } | null
+  sample: { total: number; scope: string; as_of: string; noun?: string; early?: boolean; note?: string } | null
   stats: { label: string; plain?: string; fail_pct: number | null; n: number }[] | null
   distribution: { title: string; bands: { label: string; pct: number }[] } | null
   by_category: { metric: string; rows: { category: string; fail_pct: number }[] } | null
@@ -320,11 +320,14 @@ function reportBodyHtml(rep: ReportRow): string {
   const bar = (label: string, pct: number, sub: string) => `<li style="margin:11px 0"><strong>${esc(label)}</strong> \u2014 ${pct}%<div style="height:6px;background:#efe6d2;border-radius:3px;margin:5px 0;max-width:480px"><span style="display:block;height:100%;width:${pct}%;background:#c24a33;border-radius:3px"></span></div>${sub ? `<span style="color:#5a5347;font-size:14px">${esc(sub)}</span>` : ''}</li>`
   const h = rep.hero_stat
   const yr = (rep.sample?.as_of || '').slice(0, 4)
+  const noun = rep.sample?.noun || `${rep.sample?.scope || ''} we measured`
   let o = `<main style="max-width:760px;margin:0 auto;padding:90px 24px 80px;font-family:Georgia,serif;color:#211c15;line-height:1.6">`
-  if (rep.coined_term) o += `<p style="font-family:monospace;font-size:12px;color:#97600f;text-transform:uppercase;letter-spacing:.08em">${esc(rep.coined_term)} \u00b7 ${yr} edition</p>`
+  if (rep.coined_term) o += `<p style="font-family:monospace;font-size:12px;color:#97600f;text-transform:uppercase;letter-spacing:.08em">${esc(rep.coined_term)} \u00b7 ${yr} edition${rep.sample?.early ? ' \u00b7 early findings' : ''}</p>`
   o += `<h1 style="font-size:38px;line-height:1.1;margin:8px 0 14px">${esc(rep.title)}</h1>`
+  if (rep.sample?.early) o += `<p style="display:inline-block;background:#fbf3df;border:1px solid #e7d4ac;color:#8a5a12;border-radius:8px;padding:7px 12px;font-size:13.5px;margin:0 0 10px">Early findings \u2014 small sample, growing. Reported descriptively, not as a "State of" claim.</p>`
   o += `<p style="font-size:17px;color:#4a4438">${esc(rep.subtitle)}</p>`
-  if (h) o += `<div style="background:#211c15;color:#e0a92e;border-radius:16px;padding:34px;text-align:center;margin:26px 0"><div style="font-size:92px;font-weight:700;line-height:1">${esc(h.value)}${esc(h.unit || '%')}</div><div style="color:#e9e2d4;font-size:16px;margin-top:8px">${esc(h.label)} \u2014 according to Legit.Show</div></div>`
+  if (h) o += `<div style="background:#211c15;color:#e0a92e;border-radius:16px;padding:34px;text-align:center;margin:26px 0"><div style="font-size:92px;font-weight:700;line-height:1">${esc(h.value)}${esc(h.unit || '%')}</div><div style="color:#e9e2d4;font-size:16px;margin-top:8px">${esc(h.label)}</div><div style="color:#9a9080;font-size:13px;margin-top:10px">across ${esc(h.n)} ${esc(noun)} \u00b7 according to Legit.Show \u00b7 ${esc(yr)}</div></div>`
+  if (rep.sample?.note) o += `<p style="font-size:13.5px;color:#6f6757">${esc(rep.sample.note)}</p>`
   if (rep.stats?.length) o += `<h2>The findings</h2><ul style="list-style:none;padding:0">${rep.stats.map(s => bar(s.label, s.fail_pct ?? 0, s.plain || '')).join('')}</ul>`
   if (rep.distribution?.bands?.length) o += `<h2>${esc(rep.distribution.title)}</h2><ul style="list-style:none;padding:0">${rep.distribution.bands.map(b => bar(b.label, b.pct, '')).join('')}</ul>`
   if (rep.by_category?.rows?.length) o += `<h2>By category</h2><ul>${rep.by_category.rows.map(c => `<li>${esc(c.category)} \u2014 ${c.fail_pct}% ${esc(rep.by_category!.metric)}</li>`).join('')}</ul>`

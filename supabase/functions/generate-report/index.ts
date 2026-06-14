@@ -89,8 +89,8 @@ async function buildDeep(period: string, asOf: string) {
     title: `The State of AI-Built Software · ${period.toUpperCase()}`,
     subtitle: `We ran Legit.Show’s 7-Frame production-readiness benchmark across ${total} open-source AI, MCP and developer tools — straight from their repositories. AI coding ships a flawless demo; this is what quietly never makes it to production.`,
     coined_term: '7-Frame trust gap',
-    hero_stat: { value: hero.fail_pct, unit: '%', label: 'of AI-built open-source tools ship with no error tracking', n: hero.n },
-    sample: { total, scope: 'open-source AI, MCP & developer tools with a public repository', as_of: asOf },
+    hero_stat: { value: hero.fail_pct, unit: '%', label: 'ship with no error tracking', n: hero.n },
+    sample: { total, scope: 'open-source AI, MCP & developer tools with a public repository', noun: 'open-source AI & developer tools we measured', as_of: asOf },
     stats, distribution, by_category, hall_of_fame: hall, lowlights,
     body: [
       { h: 'Why these seven', md: `The demo always works — that’s what AI coding is *great* at. The gap is everything a demo never forces you to add: monitoring for when it breaks, limits for when it’s abused, access rules for when there’s more than one user. **${b.clean} of ${total}** (${distribution.bands[0].pct}%) had none of these gaps. The rest are one incident away from finding out.` },
@@ -138,8 +138,8 @@ async function buildSurface(period: string, asOf: string) {
     title: `The Web Security Baseline · ${period.toUpperCase()}`,
     subtitle: `We checked the public security posture of ${total} launched web apps, SaaS and AI tools on Legit.Show — the headers and policies a browser sees before you ever sign in. Most ship without the basics.`,
     coined_term: 'the security-header gap',
-    hero_stat: { value: hero.fail_pct, unit: '%', label: 'of launched web apps ship with no Content-Security-Policy', n: hero.n },
-    sample: { total, scope: 'launched web apps, SaaS and AI tools', as_of: asOf },
+    hero_stat: { value: hero.fail_pct, unit: '%', label: 'ship with no Content-Security-Policy', n: hero.n },
+    sample: { total, scope: 'launched web apps, SaaS and AI tools', noun: 'web apps we measured', as_of: asOf },
     stats, distribution, by_category, hall_of_fame: hall, lowlights: [],
     body: [
       { h: 'What this measures', md: `These are **public-surface** checks — what any browser or crawler sees from the outside, before login. They measure hygiene, not whether the product is good. Every number is a share of ${total} tested web services as of ${asOf}.` },
@@ -177,8 +177,8 @@ async function buildPrivacy(period: string, asOf: string) {
     title: `The Privacy Gap · ${period.toUpperCase()}`,
     subtitle: `We checked what ${total} launched web apps, SaaS and AI tools tell you about your data — before you ever sign in. Most tell you nothing.`,
     coined_term: 'the consent gap',
-    hero_stat: { value: hero.fail_pct, unit: '%', label: `of launched web apps ship with ${hero.label.toLowerCase()}`, n: total },
-    sample: { total, scope: 'launched web apps, SaaS and AI tools', as_of: asOf },
+    hero_stat: { value: hero.fail_pct, unit: '%', label: `ship with ${hero.label.toLowerCase()}`, n: total },
+    sample: { total, scope: 'launched web apps, SaaS and AI tools', noun: 'web apps we measured', as_of: asOf },
     stats, distribution, by_category, hall_of_fame: [], lowlights: [],
     body: [
       { h: 'What this measures', md: `Public-surface privacy posture: is there a reachable privacy policy, terms page, and a cookie-consent prompt before non-essential cookies are set. Hygiene and compliance signals, not legal advice — a share of ${total} tested web services as of ${asOf}.` },
@@ -210,17 +210,25 @@ async function buildMcp(period: string, asOf: string) {
   const sum = rows.map(r => ({ name: r.name, slug: r.slug, pass: r.repo_audit?.summary?.pass || 0, fail: r.repo_audit?.summary?.fail || 0 }))
   const hall = sum.filter(r => r.fail === 0 && r.pass >= 2).sort((a, b) => b.pass - a.pass).slice(0, 8)
   const hero = stats.find(s => s.key === 'auth') || stats[0]
+  // auth is only meaningful for network-exposed servers; stdio/local servers are
+  // marked `na` by the scanner and excluded from the denominator. hero.n is that
+  // network-exposed subset; `exposed`/`local` make the split explicit (10 §5).
+  const exposed = hero?.n ?? 0
+  const local = total - exposed
+  // n is far below the hard floor (≥100, §10) → early findings, not a "State of"
+  // headline. `early` drives the page badge + keeps it out of the marketing lead.
+  const early = (hero?.n ?? 0) < 100
   return {
     slug: `state-of-mcp-servers-${period}`, kind: 'vertical', status: 'draft',
-    title: `The State of MCP Servers · ${period.toUpperCase()}`,
-    subtitle: `MCP is the newest way to give an AI tools — and ${total} of the servers in our catalog were scanned straight from their repositories. The protocol is young; the production hygiene shows it.`,
+    title: `MCP Servers · an early security read · ${period.toUpperCase()}`,
+    subtitle: `MCP is the newest way to give an AI real tools. We scanned ${total} servers from our catalog straight from their repositories; ${exposed} are network-exposed (the rest run locally over stdio, where network auth doesn't apply). This is an early read on a young protocol — the sample is small and growing.`,
     coined_term: 'the open-tool gap',
-    hero_stat: { value: hero?.fail_pct ?? 0, unit: '%', label: `of MCP servers ship with ${(hero?.label || '').toLowerCase()}`, n: hero?.n ?? total },
-    sample: { total, scope: 'open-source MCP servers with a public repository', as_of: asOf },
+    hero_stat: { value: hero?.fail_pct ?? 0, unit: '%', label: 'require no authentication', n: exposed },
+    sample: { total, scope: 'open-source MCP servers with a public repository', noun: 'network-exposed MCP servers we scanned', as_of: asOf, early, note: `${total} scanned · ${exposed} network-exposed (auth assessed) · ${local} run locally over stdio, where network auth does not apply.` },
     stats, distribution: null, by_category: null, hall_of_fame: hall, lowlights: [],
     body: [
-      { h: 'Why MCP is the scary one', md: `An MCP server hands an AI the keys to *do things* — read files, hit APIs, run code. When one ships with no authentication, anyone who can reach it gets those keys too. This is the newest category, with the least settled security culture, and zero prior measurement.` },
-      { h: 'A young protocol', md: `These aren’t bad engineers — MCP barely existed a year ago. The point isn’t blame; it’s that "exposes tools to an AI" and "has no auth" should never be true at once, and right now they often are.` },
+      { h: 'Why MCP is the scary one', md: `An MCP server hands an AI the keys to *do things* — read files, hit APIs, run code. When a network-exposed one ships with no authentication, anyone who can reach it gets those keys too. This is the newest category, with the least settled security culture.` },
+      { h: 'Early findings, stated plainly', md: `Of the ${exposed} network-exposed servers we could assess for auth, ${hero?.fail ?? 0} require none. That's an early signal on a small sample — not a verdict on every MCP server. The ${local} that run over stdio are excluded from the auth count, because network auth doesn't apply to a local process. We'll keep widening the sample.` },
     ],
     published_at: `${asOf}T15:00:00Z`,
   }
@@ -242,7 +250,7 @@ async function buildOssVsSaas(period: string, asOf: string) {
     subtitle: `Does opening the code make a product more production-ready — or less? We compared ${oss.length} open-source tools against ${saas.length} closed web apps on the frames both can be measured on.`,
     coined_term: 'the openness premium',
     hero_stat: { value: Math.abs(secGap.oss - secGap.saas), unit: 'pt', label: `security gap between open-source and closed SaaS (${lead} leads)`, n: oss.length + saas.length },
-    sample: { total: oss.length + saas.length, scope: 'open-source tools vs closed web apps', as_of: asOf },
+    sample: { total: oss.length + saas.length, scope: 'open-source tools vs closed web apps', noun: 'services we measured', as_of: asOf },
     stats: [], distribution: null, by_category: null, compare, hall_of_fame: [], lowlights: [],
     body: [
       { h: 'What this compares', md: `Four frames are measurable for both an open repo and a closed website — security posture, web standards, discoverability and maintenance. Each bar is the group average (0–100). Performance / accessibility / privacy need a rendered page, so they’re excluded to keep the comparison fair.` },
