@@ -246,7 +246,12 @@ function tweetsFor(rep: Rep): { kind: string; body: string }[] {
     return [{ kind: 'single', body }]
   }
   const stat = `${h.value}${h.unit || '%'} ${h.label || ''}`.trim()
-  const top = (rep.stats || []).slice(0, 2).map(s => `${s.fail_pct}% ${s.label.toLowerCase()}`)
+  // Drop the stat that backs the hero (its label is embedded in the hero label),
+  // so "Also:" doesn't repeat the headline. Then take the next two.
+  const heroL = (h.label || '').toLowerCase()
+  const top = (rep.stats || [])
+    .filter(s => { const l = s.label.toLowerCase(); return !heroL.includes(l) && !l.includes(heroL.replace(/^ship with /, '')) })
+    .slice(0, 2).map(s => `${s.fail_pct}% ${s.label.toLowerCase()}`)
   const extra = top.length ? `\n\nAlso: ${top.join(' · ')}.` : ''
   return [{ kind: 'single', body: `${cap(stat)}.${extra}\n\nMeasured straight from the source — across ${n} ${noun}.\n\n${url}\n\n${tags}` }]
 }
