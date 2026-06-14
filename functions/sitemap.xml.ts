@@ -65,31 +65,18 @@ const TYPE_TO_SEGMENT: Record<PostRow['type'], string> = {
 // with /community/open-mic added (was missing) and /me /ladder added
 // for completeness. Routes the SPA doesn't expose externally (e.g.
 // /admin, /backstage owner pages) stay out.
+// Legit.Show surface only. The legacy commit.show league routes (/scouts,
+// /ladder, /projects, /community/*, /rulebook, /audit, /backstage, /library,
+// /leaderboard, /map, /tokens, /creators, /products, /submit) are no longer
+// indexed — the league is retired and the engine lives under the hood, so we
+// stop advertising league URLs to crawlers (they're noindex'd in the
+// middleware too). Code + data are preserved; only the crawl surface is legit.
 const SECTION_URLS: Array<{ loc: string; changefreq: string; priority: string }> = [
   { loc: '/',                       changefreq: 'daily',   priority: '1.0' },
-  { loc: '/submit',                 changefreq: 'weekly',  priority: '0.9' },
-  { loc: '/products',               changefreq: 'daily',   priority: '0.9' },
-  { loc: '/projects',               changefreq: 'daily',   priority: '0.9' },
-  { loc: '/ladder',                 changefreq: 'daily',   priority: '0.8' },
-  { loc: '/leaderboard',            changefreq: 'daily',   priority: '0.7' },
-  { loc: '/map',                    changefreq: 'daily',   priority: '0.7' },
-  { loc: '/tokens',                 changefreq: 'daily',   priority: '0.7' },
-  { loc: '/scouts',                 changefreq: 'daily',   priority: '0.7' },
-  { loc: '/creators',               changefreq: 'daily',   priority: '0.7' },
-  { loc: '/library',                changefreq: 'daily',   priority: '0.8' },
-  { loc: '/insights',               changefreq: 'weekly',  priority: '0.6' },
   { loc: '/reports',                changefreq: 'weekly',  priority: '0.8' },
+  { loc: '/insights',               changefreq: 'weekly',  priority: '0.6' },
   { loc: '/methodology',            changefreq: 'monthly', priority: '0.6' },
   { loc: '/about',                  changefreq: 'monthly', priority: '0.5' },
-  { loc: '/community',              changefreq: 'daily',   priority: '0.8' },
-  { loc: '/community/open-mic',     changefreq: 'daily',   priority: '0.7' },
-  { loc: '/community/build-logs',   changefreq: 'daily',   priority: '0.7' },
-  { loc: '/community/stacks',       changefreq: 'daily',   priority: '0.7' },
-  { loc: '/community/asks',         changefreq: 'daily',   priority: '0.6' },
-  { loc: '/community/office-hours', changefreq: 'weekly',  priority: '0.6' },
-  { loc: '/rulebook',               changefreq: 'monthly', priority: '0.7' },
-  { loc: '/backstage',              changefreq: 'monthly', priority: '0.6' },
-  { loc: '/audit',                  changefreq: 'monthly', priority: '0.7' },
   { loc: '/privacy',                changefreq: 'yearly',  priority: '0.3' },
   { loc: '/terms',                  changefreq: 'yearly',  priority: '0.3' },
 ]
@@ -180,14 +167,12 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
   // Both fetches in parallel · keep the latency budget tight (sitemap
   // is hit by Googlebot fleet, not humans, but still don't want it
   // serializing two RTs to Supabase).
-  let postsXml    = ''
-  let projectsXml = ''
+  // Legit-only: directory listings (/s/, /alternatives/) + reports. The league
+  // feeds (community posts, league projects) are retired from the crawl surface.
   let listingsXml = ''
   let reportsXml  = ''
   try {
-    const [posts, projects, listings, reports] = await Promise.all([
-      fetchPosts(ctx.env),
-      fetchProjects(ctx.env),
+    const [listings, reports] = await Promise.all([
       fetchListings(ctx.env),
       fetchReports(ctx.env),
     ])
@@ -206,38 +191,16 @@ export const onRequest: PagesFunction<Env> = async (ctx) => {
         return entries
       })
       .join('\n')
-
-    postsXml = posts
-      .map(p => {
-        const segment = TYPE_TO_SEGMENT[p.type]
-        if (!segment) return ''
-        const slug    = buildPostSlug(p.title)
-        const loc     = slug
-          ? `${base}/community/${segment}/${slug}-${p.id}`
-          : `${base}/community/${segment}/${p.id}`
-        const lastmod = p.published_at
-        return urlEntry(loc, lastmod, 'weekly', '0.6')
-      })
-      .filter(Boolean)
-      .join('\n')
-
-    projectsXml = projects
-      .map(p => {
-        const loc     = `${base}/projects/${p.id}`
-        const lastmod = p.last_analysis_at ?? p.updated_at
-        return urlEntry(loc, lastmod, 'weekly', '0.7')
-      })
-      .join('\n')
   } catch {
     // Supabase down · serve the section-only sitemap. Googlebot will
-    // still get the canonical surfaces and re-crawl posts via internal
-    // links from the feed pages.
+    // still get the canonical surfaces and re-crawl listings via internal
+    // links from the directory.
   }
 
   const body =
 `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${sections}${reportsXml ? '\n' + reportsXml : ''}${listingsXml ? '\n' + listingsXml : ''}${postsXml ? '\n' + postsXml : ''}${projectsXml ? '\n' + projectsXml : ''}
+${sections}${reportsXml ? '\n' + reportsXml : ''}${listingsXml ? '\n' + listingsXml : ''}
 </urlset>
 `
 

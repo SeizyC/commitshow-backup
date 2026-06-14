@@ -402,19 +402,22 @@ function renderRoute(r) {
   console.log(`  ✓ index.html (/ root, in-place)`)
 }
 
-for (const r of routes) {
+// Only legit-relevant routes get a prerendered static HTML. The legacy
+// commit.show league routes (rulebook · scouts · ladder · projects · library ·
+// audit · backstage · submit · community/* · cli/link · check) are retired from
+// the crawl surface — baking their commit.show-flavored content into dist would
+// reinforce the wrong identity (dev_requests/09). Their route definitions stay
+// (the SPA still renders them, noindex'd by the middleware); they just aren't
+// prerendered or sitemapped. Keep the legal pages (legit.show needs them).
+const PRERENDER_ALLOW = new Set(['/privacy', '/terms'])
+const liveRoutes = routes.filter(r => PRERENDER_ALLOW.has(r.path))
+for (const r of liveRoutes) {
   const html = renderRoute(r)
   // Write to dist/<route>.html (NOT dist/<route>/index.html). Cloudflare
   // Pages serves /<route> straight from /<route>.html with no redirect.
-  // The directory form would 308-redirect /rulebook → /rulebook/ which
-  // breaks every backlink that uses the canonical no-trailing-slash form.
-  // Nested routes (e.g. /community/build-logs) still need the parent
-  // directory created — only the leaf gets the .html suffix.
-  const rel       = r.path.replace(/^\//, '')              // 'community/build-logs'
-  const targetDir = resolve(DIST, dirname(rel))            // dist/community
-  if (rel.includes('/')) mkdirSync(targetDir, { recursive: true })
+  const rel = r.path.replace(/^\//, '')
   writeFileSync(resolve(DIST, `${rel}.html`), html)
   console.log(`  ✓ ${rel}.html`)
 }
 
-console.log(`\n[prerender] Generated ${routes.length + 1} static route HTMLs (incl. / root).`)
+console.log(`\n[prerender] Generated ${liveRoutes.length + 1} static route HTMLs (incl. / root).`)

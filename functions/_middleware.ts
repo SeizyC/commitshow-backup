@@ -460,9 +460,24 @@ function rewriteHtml(res: Response, opts: { title: string; description: string; 
   if (bodyHtml) rw = rw.on('#root', new RootInject(bodyHtml))
   return rw.transform(res)
 }
+// Legacy commit.show league routes. The league is retired; the engine lives
+// under the hood. These pages still resolve in the SPA (code + data preserved)
+// but must not be indexed — they'd reinforce a "legit.show = commit.show vibe
+// league" reading for crawlers (dev_requests/09). noindex via both header and
+// meta; they're also dropped from the sitemap.
+const LEAGUE_RE = /^\/(scouts|ladder|leaderboard|map|tokens|creators|library|rulebook|backstage|audit|projects|project|products|community|submit|cli|check|pitch|pitch-k|v2|old)(\/|$)/
 async function directoryMetaResponse(env: Env, request: Request): Promise<Response | null> {
   const url = new URL(request.url)
   const path = url.pathname.replace(/\.html$/, '')
+  if (LEAGUE_RE.test(path)) {
+    const asset = await fetch(new URL('/index.html', request.url).toString())
+    if (!asset.ok) return null
+    const rw = new HTMLRewriter().on('head', new HeadInject('<meta name="robots" content="noindex, nofollow" />')).transform(asset)
+    const r = new Response(rw.body, rw)
+    r.headers.set('X-Robots-Tag', 'noindex, nofollow')
+    r.headers.set('x-legit-seo', 'league-noindex')
+    return r
+  }
   const isIndex = path === '/' || path === ''
   const isInsights = path === '/insights' || path === '/insights/'
   const m = path.match(/^\/s\/([A-Za-z0-9._-]+)\/?$/)
