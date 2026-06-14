@@ -270,7 +270,9 @@ async function getListing(env: Env, slug: string): Promise<Listing | null> {
 type ReportRow = {
   slug: string; title: string; subtitle: string; coined_term: string | null
   hero_stat: { value: number; unit?: string; label: string; n: number } | null
-  sample: { total: number; scope: string; as_of: string; noun?: string; early?: boolean; note?: string } | null
+  sample: ({ total: number; scope: string; as_of: string; noun?: string; early?: boolean; note?: string
+    composition?: { by_category?: { label: string; count: number }[]; by_form?: { label: string; count: number }[]; top_org?: { name: string; pct: number; n: number } } }) | null
+  measured: { name?: string; slug?: string }[] | null
   stats: { label: string; plain?: string; fail_pct: number | null; n: number }[] | null
   distribution: { title: string; bands: { label: string; pct: number }[] } | null
   by_category: { metric: string; rows: { category: string; fail_pct: number }[] } | null
@@ -281,7 +283,7 @@ type ReportRow = {
 async function getReport(env: Env, slug: string): Promise<ReportRow | null> {
   const key = env.SUPABASE_ANON_KEY ?? ''
   if (!key) return null
-  const cols = 'slug,title,subtitle,coined_term,hero_stat,sample,stats,distribution,by_category,compare,body,published_at'
+  const cols = 'slug,title,subtitle,coined_term,hero_stat,sample,stats,distribution,by_category,compare,body,measured,published_at'
   const r = await fetch(`${supa(env)}/rest/v1/reports?slug=eq.${encodeURIComponent(slug)}&status=eq.published&select=${cols}&limit=1`,
     { headers: { apikey: key, Authorization: `Bearer ${key}` } })
   if (!r.ok) return null
@@ -333,6 +335,22 @@ function reportBodyHtml(rep: ReportRow): string {
   if (rep.by_category?.rows?.length) o += `<h2>By category</h2><ul>${rep.by_category.rows.map(c => `<li>${esc(c.category)} \u2014 ${c.fail_pct}% ${esc(rep.by_category!.metric)}</li>`).join('')}</ul>`
   if (rep.compare?.frames?.length) o += `<h2>${esc(rep.compare.oss_label)} vs ${esc(rep.compare.saas_label)}</h2><ul>${rep.compare.frames.map(fr => `<li>${esc(fr.label)}: ${esc(rep.compare!.oss_label)} ${fr.oss} \u00b7 ${esc(rep.compare!.saas_label)} ${fr.saas}</li>`).join('')}</ul>`
   if (rep.body?.length) o += rep.body.map(b => `<h2>${esc(b.h)}</h2><p>${esc(b.md.replace(/\*\*/g, ''))}</p>`).join('')
+  // Sample composition + measured list (dev_requests/10 \u00a73\u00b7\u00a74) \u2014 un-dunkability:
+  // the mix and the full list, crawlable so an answer engine can verify the sample.
+  const comp = rep.sample?.composition
+  if (comp) {
+    o += `<h2>Sample composition</h2><p>Not a random sample \u2014 this is what we measured. The mix below is the caveat; judge it for yourself.</p><ul>`
+    for (const c of (comp.by_form || [])) o += `<li>${esc(c.label)}: ${esc(c.count)}</li>`
+    for (const c of (comp.by_category || [])) o += `<li>${esc(c.label)}: ${esc(c.count)}</li>`
+    if (comp.top_org) o += `<li>Largest single maker: ${esc(comp.top_org.pct)}% (${esc(comp.top_org.name)}, ${esc(comp.top_org.n)})</li>`
+    o += `</ul>`
+  }
+  if (rep.measured?.length) {
+    const items = rep.measured.filter(m => m.name || m.slug)
+    o += `<h2>What we measured (${items.length})</h2><p>The full list, so anyone can spot-check. Every item links to its public benchmark.</p><ul>`
+    o += items.map(m => m.slug ? `<li><a href="/s/${esc(m.slug)}">${esc(m.name || m.slug)}</a></li>` : `<li>${esc(m.name)}</li>`).join('')
+    o += `</ul>`
+  }
   o += `<p style="margin-top:30px"><a href="/methodology">How this was measured \u2192</a></p></main>`
   return o
 }

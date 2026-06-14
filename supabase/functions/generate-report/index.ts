@@ -49,6 +49,29 @@ const upsert = async (row: Record<string, unknown>) => {
   return { ok: r.ok, body: await r.json() }
 }
 
+// ── sample disclosure (dev_requests/10 §3·§4) ──
+// composition = category/form/org distribution (nested in sample · small).
+// measured     = the full list of items measured, so anyone can spot-check.
+type Row = { name?: string; slug?: string; category?: string | null; url?: string; domain?: string; benchmark?: any }
+const tally = (xs: (string | null | undefined)[]) => { const m = new Map<string, number>(); for (const x of xs) if (x) m.set(x, (m.get(x) || 0) + 1); return m }
+const topN = (m: Map<string, number>, n: number) => [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, n).map(([label, count]) => ({ label, count }))
+function orgOf(r: Row): string | null {
+  if (r.url) { const gh = String(r.url).match(/github\.com\/([^/]+)/i); if (gh) return gh[1].toLowerCase() }
+  if (r.slug && /^gh-/.test(r.slug)) { const p = r.slug.split('-'); if (p.length >= 3) return p[1].toLowerCase() }
+  if (r.domain) return String(r.domain).replace(/^www\./, '').toLowerCase()
+  return null
+}
+function compose(rows: Row[], formOf?: (r: Row) => string | null | undefined) {
+  const total = rows.length
+  const out: Record<string, unknown> = { total, by_category: topN(tally(rows.map(r => r.category || 'Other')), 6) }
+  if (formOf) out.by_form = topN(tally(rows.map(r => formOf(r) || null)), 5)
+  const orgs = tally(rows.map(orgOf))
+  const top = [...orgs.entries()].sort((a, b) => b[1] - a[1])[0]
+  if (top) out.top_org = { name: top[0], pct: Math.round(100 * top[1] / total), n: top[1] }
+  return out
+}
+const measuredOf = (rows: Row[]) => rows.map(r => ({ name: r.name, slug: r.slug })).filter(r => r.slug)
+
 // ── deep report (repo_audit) ──
 const DEEP = [
   { key: 'error_tracking', label: 'No error tracking', plain: 'No crash monitoring — failures happen silently and nobody finds out.', fix: 'Wire in Sentry, OpenTelemetry or a hosted logger — minutes, not days.' },
@@ -90,7 +113,8 @@ async function buildDeep(period: string, asOf: string) {
     subtitle: `We ran Legit.Show’s 7-Frame production-readiness benchmark across ${total} open-source AI, MCP and developer tools — straight from their repositories. AI coding ships a flawless demo; this is what quietly never makes it to production.`,
     coined_term: '7-Frame trust gap',
     hero_stat: { value: hero.fail_pct, unit: '%', label: 'ship with no error tracking', n: hero.n },
-    sample: { total, scope: 'open-source AI, MCP & developer tools with a public repository', noun: 'open-source AI & developer tools we measured', as_of: asOf },
+    sample: { total, scope: 'open-source AI, MCP & developer tools with a public repository', noun: 'open-source AI & developer tools we measured', as_of: asOf, composition: compose(rows) },
+    measured: measuredOf(rows),
     stats, distribution, by_category, hall_of_fame: hall, lowlights,
     body: [
       { h: 'Why these seven', md: `The demo always works — that’s what AI coding is *great* at. The gap is everything a demo never forces you to add: monitoring for when it breaks, limits for when it’s abused, access rules for when there’s more than one user. **${b.clean} of ${total}** (${distribution.bands[0].pct}%) had none of these gaps. The rest are one incident away from finding out.` },
@@ -112,7 +136,7 @@ const SURF = [
   { key: 'soft_404', label: 'No real 404 page', plain: 'Returns “200 OK” for pages that don’t exist — confuses crawlers and hides broken links.', fix: 'Return a real 404 status for unknown routes.', bad: (f: any) => f.reliability?.proper404 === false, has: (f: any) => f.reliability?.proper404 != null },
 ]
 async function buildSurface(period: string, asOf: string) {
-  const rows = await getRows('select=name,slug,category,benchmark&benchmark->>form=eq.web&benchmark=not.is.null') as { name: string; slug: string; category: string | null; benchmark: any }[]
+  const rows = await getRows('select=name,slug,category,domain,benchmark&benchmark->>form=eq.web&benchmark=not.is.null') as { name: string; slug: string; category: string | null; domain: string; benchmark: any }[]
   const fr = (r: any) => r.benchmark?.signals?.frames || {}
   const total = rows.length
   const stats = SURF.map(d => {
@@ -139,7 +163,8 @@ async function buildSurface(period: string, asOf: string) {
     subtitle: `We checked the public security posture of ${total} launched web apps, SaaS and AI tools on Legit.Show — the headers and policies a browser sees before you ever sign in. Most ship without the basics.`,
     coined_term: 'the security-header gap',
     hero_stat: { value: hero.fail_pct, unit: '%', label: 'ship with no Content-Security-Policy', n: hero.n },
-    sample: { total, scope: 'launched web apps, SaaS and AI tools', noun: 'web apps we measured', as_of: asOf },
+    sample: { total, scope: 'launched web apps, SaaS and AI tools', noun: 'web apps we measured', as_of: asOf, composition: compose(rows) },
+    measured: measuredOf(rows),
     stats, distribution, by_category, hall_of_fame: hall, lowlights: [],
     body: [
       { h: 'What this measures', md: `These are **public-surface** checks — what any browser or crawler sees from the outside, before login. They measure hygiene, not whether the product is good. Every number is a share of ${total} tested web services as of ${asOf}.` },
@@ -152,7 +177,7 @@ async function buildSurface(period: string, asOf: string) {
 
 // ── privacy report (surface privacy signals) ──
 async function buildPrivacy(period: string, asOf: string) {
-  const rows = await getRows('select=name,slug,category,benchmark&benchmark->>form=eq.web&benchmark=not.is.null') as { name: string; slug: string; category: string | null; benchmark: any }[]
+  const rows = await getRows('select=name,slug,category,domain,benchmark&benchmark->>form=eq.web&benchmark=not.is.null') as { name: string; slug: string; category: string | null; domain: string; benchmark: any }[]
   const fr = (r: any) => r.benchmark?.signals?.frames?.privacy || {}
   const total = rows.length
   const defs = [
@@ -178,7 +203,8 @@ async function buildPrivacy(period: string, asOf: string) {
     subtitle: `We checked what ${total} launched web apps, SaaS and AI tools tell you about your data — before you ever sign in. Most tell you nothing.`,
     coined_term: 'the consent gap',
     hero_stat: { value: hero.fail_pct, unit: '%', label: `ship with ${hero.label.toLowerCase()}`, n: total },
-    sample: { total, scope: 'launched web apps, SaaS and AI tools', noun: 'web apps we measured', as_of: asOf },
+    sample: { total, scope: 'launched web apps, SaaS and AI tools', noun: 'web apps we measured', as_of: asOf, composition: compose(rows) },
+    measured: measuredOf(rows),
     stats, distribution, by_category, hall_of_fame: [], lowlights: [],
     body: [
       { h: 'What this measures', md: `Public-surface privacy posture: is there a reachable privacy policy, terms page, and a cookie-consent prompt before non-essential cookies are set. Hygiene and compliance signals, not legal advice — a share of ${total} tested web services as of ${asOf}.` },
@@ -224,7 +250,8 @@ async function buildMcp(period: string, asOf: string) {
     subtitle: `MCP is the newest way to give an AI real tools. We scanned ${total} servers from our catalog straight from their repositories; ${exposed} are network-exposed (the rest run locally over stdio, where network auth doesn't apply). This is an early read on a young protocol — the sample is small and growing.`,
     coined_term: 'the open-tool gap',
     hero_stat: { value: hero?.fail_pct ?? 0, unit: '%', label: 'require no authentication', n: exposed },
-    sample: { total, scope: 'open-source MCP servers with a public repository', noun: 'network-exposed MCP servers we scanned', as_of: asOf, early, note: `${total} scanned · ${exposed} network-exposed (auth assessed) · ${local} run locally over stdio, where network auth does not apply.` },
+    sample: { total, scope: 'open-source MCP servers with a public repository', noun: 'network-exposed MCP servers we scanned', as_of: asOf, early, note: `${total} scanned · ${exposed} network-exposed (auth assessed) · ${local} run locally over stdio, where network auth does not apply.`, composition: compose(rows) },
+    measured: measuredOf(rows),
     stats, distribution: null, by_category: null, hall_of_fame: hall, lowlights: [],
     body: [
       { h: 'Why MCP is the scary one', md: `An MCP server hands an AI the keys to *do things* — read files, hit APIs, run code. When a network-exposed one ships with no authentication, anyone who can reach it gets those keys too. This is the newest category, with the least settled security culture.` },
@@ -236,7 +263,7 @@ async function buildMcp(period: string, asOf: string) {
 
 // ── Open-source vs closed SaaS (comparison) ──
 async function buildOssVsSaas(period: string, asOf: string) {
-  const rows = await getRows('select=benchmark&benchmark=not.is.null') as { benchmark: any }[]
+  const rows = await getRows('select=name,slug,category,domain,benchmark&benchmark=not.is.null') as { name: string; slug: string; category: string | null; domain: string; benchmark: any }[]
   const FR = [ ['security', 'Security'], ['standards', 'Standards'], ['discoverability', 'Discoverability'], ['maintenance', 'Maintenance'] ] as [string, string][]
   const oss = rows.filter(r => ['github', 'npm'].includes(r.benchmark?.form))
   const saas = rows.filter(r => r.benchmark?.form === 'web')
@@ -250,7 +277,8 @@ async function buildOssVsSaas(period: string, asOf: string) {
     subtitle: `Does opening the code make a product more production-ready — or less? We compared ${oss.length} open-source tools against ${saas.length} closed web apps on the frames both can be measured on.`,
     coined_term: 'the openness premium',
     hero_stat: { value: Math.abs(secGap.oss - secGap.saas), unit: 'pt', label: `security gap between open-source and closed SaaS (${lead} leads)`, n: oss.length + saas.length },
-    sample: { total: oss.length + saas.length, scope: 'open-source tools vs closed web apps', noun: 'services we measured', as_of: asOf },
+    sample: { total: oss.length + saas.length, scope: 'open-source tools vs closed web apps', noun: 'services we measured', as_of: asOf, composition: compose(rows, r => r.benchmark?.form === 'web' ? 'Closed SaaS' : 'Open source') },
+    measured: measuredOf(rows),
     stats: [], distribution: null, by_category: null, compare, hall_of_fame: [], lowlights: [],
     body: [
       { h: 'What this compares', md: `Four frames are measurable for both an open repo and a closed website — security posture, web standards, discoverability and maintenance. Each bar is the group average (0–100). Performance / accessibility / privacy need a rendered page, so they’re excluded to keep the comparison fair.` },

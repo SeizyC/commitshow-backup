@@ -17,7 +17,9 @@ type CatRow = { category: string; n: number; fail_pct: number }
 type Report = {
   slug: string; kind: string; title: string; subtitle: string; coined_term: string | null
   hero_stat: { value: number; unit: string; label: string; n: number }
-  sample: { total: number; scope: string; as_of: string; noun?: string; early?: boolean; note?: string }
+  sample: { total: number; scope: string; as_of: string; noun?: string; early?: boolean; note?: string
+    composition?: { total: number; by_category?: { label: string; count: number }[]; by_form?: { label: string; count: number }[]; top_org?: { name: string; pct: number; n: number } } | null }
+  measured?: { name?: string; slug?: string }[] | null
   stats: Stat[]; hall_of_fame: Tool[]; lowlights: Tool[]
   distribution?: { title: string; note: string; bands: Band[] } | null
   by_category?: { metric: string; rows: CatRow[] } | null
@@ -39,6 +41,18 @@ const CSS = `
 .rp-herocite{font-family:'JetBrains Mono',monospace;font-size:11px;color:#9A9080;margin-top:16px;letter-spacing:.04em}
 .rp-early{display:inline-block;background:#FBF3DF;border:1px solid #E7D4AC;color:#8A5A12;border-radius:8px;padding:8px 13px;font-size:13px;line-height:1.45;margin:4px 0 6px}
 .rp-samplenote{font-size:13px;color:#6F6757;line-height:1.5;margin:10px 2px 0}
+.rp-comp{display:flex;flex-wrap:wrap;gap:28px;margin:8px 0 4px}
+.rp-compcol{flex:1;min-width:180px}
+.rp-complabel{font-family:'JetBrains Mono',monospace;font-size:11px;color:#97600F;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.rp-comprow{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-top:1px solid #ECE3D2;font-size:14px;color:#3C362C}.rp-comprow:first-of-type{border-top:none}
+.rp-compn{font-family:'JetBrains Mono',monospace;color:#6F6757;font-variant-numeric:tabular-nums}
+.rp-compnote{font-size:12.5px;color:#6F6757;line-height:1.5;margin-top:8px}
+.rp-mcount{font-family:'JetBrains Mono',monospace;font-size:15px;color:#9A9080;font-weight:400}
+.rp-measured{margin:4px 0 8px}
+.rp-measured summary{cursor:pointer;font-size:14px;color:#97600F;font-weight:600;padding:6px 0}
+.rp-measuredgrid{display:flex;flex-wrap:wrap;gap:6px 10px;margin-top:10px}
+.lgt a.rp-mitem,.rp-mitem{font-size:12.5px;color:#5A5347;background:#FCFAF5;border:1px solid #ECE3D2;border-radius:6px;padding:4px 9px;text-decoration:none}
+.lgt a.rp-mitem:hover{border-color:#C99A2E;color:#211C15}
 .rp-sec{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:24px;color:#211C15;margin:46px 0 4px}
 .rp-secn{font-size:13px;color:#6F6757;font-family:'JetBrains Mono',monospace;margin-bottom:20px}
 .rp-bar{padding:15px 0;border-top:1px solid #ECE3D2}
@@ -285,6 +299,44 @@ export function ReportDetailPage() {
                 <Link key={t.slug} to={`/s/${t.slug}`} className="rp-tool">{t.name}<span className="n" style={{ color: '#C24A33' }}>{t.fail} gaps</span></Link>
               ))}
             </div>
+          </>
+        )}
+
+        {r.sample?.composition && (
+          <>
+            <h2 className="rp-sec">Sample composition</h2>
+            <div className="rp-secn">Not a random sample — this is what we measured. The mix below is the caveat; judge it for yourself.</div>
+            <div className="rp-comp">
+              {!!r.sample.composition.by_form?.length && (
+                <div className="rp-compcol"><div className="rp-complabel">By type</div>{r.sample.composition.by_form.map(c => (
+                  <div key={c.label} className="rp-comprow"><span>{c.label}</span><span className="rp-compn">{c.count}</span></div>))}</div>
+              )}
+              {!!r.sample.composition.by_category?.length && (
+                <div className="rp-compcol"><div className="rp-complabel">By category</div>{r.sample.composition.by_category.map(c => (
+                  <div key={c.label} className="rp-comprow"><span>{c.label}</span><span className="rp-compn">{c.count}</span></div>))}</div>
+              )}
+              {r.sample.composition.top_org && (
+                <div className="rp-compcol"><div className="rp-complabel">Maker concentration</div>
+                  <div className="rp-comprow"><span>Largest single maker</span><span className="rp-compn">{r.sample.composition.top_org.pct}%</span></div>
+                  <div className="rp-compnote">No single org dominates — top maker is {r.sample.composition.top_org.pct}% of the sample ({r.sample.composition.top_org.n}).</div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {!!r.measured?.length && (
+          <>
+            <h2 className="rp-sec">What we measured <span className="rp-mcount">({r.measured.length})</span></h2>
+            <div className="rp-secn">The full list, so anyone can spot-check. Every item links to its public benchmark.</div>
+            <details className="rp-measured">
+              <summary>Show all {r.measured.length}</summary>
+              <div className="rp-measuredgrid">
+                {r.measured.map((m, i) => m.slug
+                  ? <Link key={i} to={`/s/${m.slug}`} className="rp-mitem">{m.name || m.slug}</Link>
+                  : <span key={i} className="rp-mitem">{m.name}</span>)}
+              </div>
+            </details>
           </>
         )}
 

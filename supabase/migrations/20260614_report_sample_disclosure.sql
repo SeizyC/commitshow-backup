@@ -1,0 +1,11 @@
+-- Report sample integrity disclosure (dev_requests/10 §3·§4).
+--
+-- §4 "measured list": the full list of items each report measured, so anyone
+-- can spot-check. Stored as its own column (can be ~300 rows) rather than
+-- bloating `sample` (which is read on every report list/SSR call).
+--   measured: [{ name, slug }]
+--
+-- §3 "sample composition" is small (category/form/org distribution) and is
+-- nested inside the existing `sample` jsonb (sample.composition) — no column
+-- needed. Table-level grant already covers anon/authenticated SELECT.
+alter table reports add column if not exists measured jsonb;
