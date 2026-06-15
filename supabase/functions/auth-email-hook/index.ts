@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
       await admin.from('notification_log').insert({
         channel:        'email',
         kind:           'auth_hook_diagnostic',
-        recipient_addr: 'diagnostic@commit.show',
+        recipient_addr: 'diagnostic@legit.show',
         payload:        diag,
         dedupe_key:     `auth_hook_diag:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
         status:         'failed',
@@ -162,7 +162,7 @@ async function handle(req: Request): Promise<Response> {
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
   const SERVICE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   const RESEND_KEY   = Deno.env.get('RESEND_API_KEY')
-  const EMAIL_FROM   = Deno.env.get('EMAIL_FROM') ?? 'commit.show <notifications@commit.show>'
+  const EMAIL_FROM   = Deno.env.get('EMAIL_FROM') ?? 'Legit.Show <notifications@legit.show>'
 
   const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } })
 
