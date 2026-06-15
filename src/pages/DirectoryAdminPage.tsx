@@ -36,7 +36,7 @@ export function DirectoryAdminPage() {
   const [win, setWin] = useState('week')   // Reddit/HN recency window
   const [count, setCount] = useState(16)   // max listings processed per run
   const [edit, setEdit] = useState<{ id: string; category: string } | null>(null)
-  const [tab, setTab] = useState<'directory' | 'twitter'>('directory')
+  const [tab, setTab] = useState<'directory' | 'twitter' | 'crawlers'>('directory')
 
   const loadRows = () => supabase.from('listings').select('*').order('created_at', { ascending: false }).limit(500)
     .then(({ data }) => setRows((data as Listing[] | null) || []))
@@ -107,8 +107,8 @@ export function DirectoryAdminPage() {
           Ingest from sources and curate listings. Ingest runs Claude server-side and upserts into the public directory.
         </p>
         <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-          {(['directory', 'twitter'] as const).map(t => (
-            <span key={t} className={`l-cattile ${tab === t ? 'on' : ''}`} style={{ padding: '7px 16px', fontSize: 13.5, textTransform: 'capitalize' }} onClick={() => setTab(t)}>{t === 'twitter' ? 'Twitter' : 'Directory'}</span>
+          {(['directory', 'twitter', 'crawlers'] as const).map(t => (
+            <span key={t} className={`l-cattile ${tab === t ? 'on' : ''}`} style={{ padding: '7px 16px', fontSize: 13.5, textTransform: 'capitalize' }} onClick={() => setTab(t)}>{t === 'twitter' ? 'Twitter' : t === 'crawlers' ? 'AI crawlers' : 'Directory'}</span>
           ))}
         </div>
 
@@ -199,6 +199,7 @@ export function DirectoryAdminPage() {
         </>}
 
         {tab === 'twitter' && <TwitterSection />}
+        {tab === 'crawlers' && <CrawlersSection />}
       </div>
     </LegitShell>
   )
@@ -344,6 +345,146 @@ function TwitterSection() {
             </div>
           )
         })}
+      </div>
+    </div>
+  )
+}
+
+// ── AI crawler activity (admin) ──────────────────────────────────────────────
+// Reads the admin_crawler_stats RPC (SECURITY DEFINER · is_admin gated) — server-
+// side aggregates of ai_crawler_hits, which functions/_middleware.ts writes on
+// every AI-bot request. Shows who's crawling, how much, what, and how recently.
+type CrawlerStats = {
+  totals: { all: number; h24: number; d7: number; d30: number; bots: number; latest: string | null }
+  by_bot: { kind: string; n: number; last_seen: string }[]
+  by_day: { d: string; n: number }[]
+  top_paths: { path: string; n: number }[]
+  by_status: { code: number; n: number }[]
+  recent: { at: string; kind: string; path: string; code: number }[]
+}
+const BOT_LABEL: Record<string, string> = {
+  claudebot: 'ClaudeBot · Anthropic', 'claude-web': 'Claude-Web · Anthropic', 'claude-user': 'Claude-User · Anthropic', 'anthropic-ai': 'anthropic-ai · Anthropic',
+  gptbot: 'GPTBot · OpenAI', 'oai-searchbot': 'OAI-SearchBot · OpenAI', 'chatgpt-user': 'ChatGPT-User · OpenAI',
+  perplexitybot: 'PerplexityBot', 'perplexity-user': 'Perplexity-User',
+  'google-extended': 'Google-Extended', 'meta-externalagent': 'Meta AI', applebot: 'Applebot · Apple', 'applebot-extended': 'Applebot-Extended · Apple',
+  bytespider: 'Bytespider · ByteDance', ccbot: 'CCBot · Common Crawl', 'cohere-ai': 'Cohere', 'mistral-user': 'MistralAI-User', youbot: 'YouBot', diffbot: 'Diffbot',
+}
+const botLabel = (k: string) => BOT_LABEL[k] || k
+const ago = (iso: string | null) => {
+  if (!iso) return '—'
+  const s = (Date.now() - new Date(iso).getTime()) / 1000
+  if (s < 60) return `${Math.max(0, Math.round(s))}s ago`
+  if (s < 3600) return `${Math.round(s / 60)}m ago`
+  if (s < 86400) return `${Math.round(s / 3600)}h ago`
+  return `${Math.round(s / 86400)}d ago`
+}
+const statusTone = (c: number) => (c >= 200 && c < 300 ? '#5C8A3E' : c >= 300 && c < 400 ? '#A8742E' : '#C24A33')
+
+function CrawlersSection() {
+  const [s, setS] = useState<CrawlerStats | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const load = async () => {
+    setLoading(true); setErr(null)
+    const { data, error } = await supabase.rpc('admin_crawler_stats')
+    if (error) setErr(error.message); else setS(data as CrawlerStats)
+    setLoading(false)
+  }
+  useEffect(() => { load() }, [])
+
+  if (loading) return <div style={{ color: '#6F6757', fontSize: 14 }}>Loading crawler activity…</div>
+  if (err) return <div style={{ color: '#C24A33', fontSize: 14 }}>Couldn't load crawler stats: {err}</div>
+  if (!s) return null
+
+  const maxBot = Math.max(1, ...s.by_bot.map(b => b.n))
+  const maxDay = Math.max(1, ...s.by_day.map(d => d.n))
+  const card = (label: string, val: string | number, sub?: string) => (
+    <div style={{ flex: '1 1 130px', background: '#FCFAF5', border: '1px solid #ECE3D2', borderRadius: 12, padding: '14px 16px' }}>
+      <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: '#97600F', textTransform: 'uppercase', letterSpacing: '.06em' }}>{label}</div>
+      <div style={{ fontFamily: 'Fraunces,Georgia,serif', fontWeight: 600, fontSize: 28, color: '#211C15', lineHeight: 1.1, marginTop: 4 }}>{val}</div>
+      {sub && <div style={{ fontSize: 12, color: '#6F6757', marginTop: 2 }}>{sub}</div>}
+    </div>
+  )
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 4 }}>
+        <h2 style={{ fontSize: 19, color: '#211C15' }}>AI crawler activity</h2>
+        <span style={{ marginLeft: 'auto', fontSize: 12.5, color: '#6F6757' }}>last hit {ago(s.totals.latest)}</span>
+        <span className="l-login" style={{ fontSize: 12.5, color: '#97600F' }} onClick={load}>↻ refresh</span>
+      </div>
+      <p style={{ color: '#6F6757', fontSize: 13, marginBottom: 16 }}>
+        Which answer engines are crawling legit.show, how much, and what they read. Logged from the User-Agent on every request — the AEO / "according to Legit.Show" pulse.
+      </p>
+
+      {/* stat cards */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 24 }}>
+        {card('All-time hits', s.totals.all.toLocaleString())}
+        {card('Last 24h', s.totals.h24.toLocaleString())}
+        {card('Last 7 days', s.totals.d7.toLocaleString())}
+        {card('Distinct bots', s.totals.bots, '30-day window')}
+      </div>
+
+      {/* by bot */}
+      <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: '#6F6757', letterSpacing: '.05em', textTransform: 'uppercase', marginBottom: 10 }}>By crawler · 30 days</div>
+      <div style={{ marginBottom: 26 }}>
+        {s.by_bot.map(b => (
+          <div key={b.kind} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '6px 0' }}>
+            <div style={{ width: 200, fontSize: 13.5, color: '#2C261D', flexShrink: 0 }}>{botLabel(b.kind)}</div>
+            <div style={{ flex: 1, height: 16, background: '#F1E9D8', borderRadius: 3, overflow: 'hidden', minWidth: 60 }}>
+              <span style={{ display: 'block', height: '100%', width: `${Math.round(100 * b.n / maxBot)}%`, background: '#C99A2E', borderRadius: 3 }} />
+            </div>
+            <div style={{ width: 56, textAlign: 'right', fontFamily: "'JetBrains Mono',monospace", fontSize: 13, color: '#211C15', fontVariantNumeric: 'tabular-nums' }}>{b.n.toLocaleString()}</div>
+            <div style={{ width: 64, textAlign: 'right', fontSize: 11.5, color: '#9A9080' }}>{ago(b.last_seen)}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* 14-day trend */}
+      <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: '#6F6757', letterSpacing: '.05em', textTransform: 'uppercase', marginBottom: 10 }}>Activity · last 14 days</div>
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 90, marginBottom: 28, borderBottom: '1px solid #ECE3D2', paddingBottom: 2 }}>
+        {s.by_day.map(d => (
+          <div key={d.d} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <div style={{ fontSize: 10, color: '#9A9080', fontFamily: "'JetBrains Mono',monospace" }}>{d.n}</div>
+            <div title={`${d.d}: ${d.n}`} style={{ width: '100%', maxWidth: 26, height: `${Math.round(72 * d.n / maxDay)}px`, background: '#C99A2E', borderRadius: '3px 3px 0 0' }} />
+            <div style={{ fontSize: 9.5, color: '#9A9080', fontFamily: "'JetBrains Mono',monospace" }}>{d.d.slice(5)}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* two columns: top paths + status */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 28, marginBottom: 28 }}>
+        <div style={{ flex: '2 1 320px' }}>
+          <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: '#6F6757', letterSpacing: '.05em', textTransform: 'uppercase', marginBottom: 10 }}>Most-crawled pages · 7 days</div>
+          {s.top_paths.map((p, i) => (
+            <div key={i} style={{ display: 'flex', gap: 10, padding: '5px 0', borderTop: i ? '1px solid #F1E9D8' : 'none', fontSize: 13 }}>
+              <span style={{ flex: 1, color: '#2C261D', fontFamily: "'JetBrains Mono',monospace", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.path}</span>
+              <span style={{ fontFamily: "'JetBrains Mono',monospace", color: '#6F6757', fontVariantNumeric: 'tabular-nums' }}>{p.n}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ flex: '1 1 180px' }}>
+          <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: '#6F6757', letterSpacing: '.05em', textTransform: 'uppercase', marginBottom: 10 }}>Response status · 7 days</div>
+          {s.by_status.map(st => (
+            <div key={st.code} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontSize: 13 }}>
+              <span style={{ color: statusTone(st.code), fontFamily: "'JetBrains Mono',monospace", fontWeight: 600 }}>{st.code}</span>
+              <span style={{ fontFamily: "'JetBrains Mono',monospace", color: '#6F6757', fontVariantNumeric: 'tabular-nums' }}>{st.n}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* recent feed */}
+      <div style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 11, color: '#6F6757', letterSpacing: '.05em', textTransform: 'uppercase', marginBottom: 10 }}>Recent hits</div>
+      <div style={{ border: '1px solid #ECE3D2', borderRadius: 10, overflow: 'hidden' }}>
+        {s.recent.map((h, i) => (
+          <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '7px 12px', borderTop: i ? '1px solid #F1E9D8' : 'none', background: i % 2 ? '#FCFAF5' : '#fff', fontSize: 12.5 }}>
+            <span style={{ width: 60, color: '#9A9080', fontFamily: "'JetBrains Mono',monospace", flexShrink: 0 }}>{ago(h.at)}</span>
+            <span style={{ width: 150, color: '#2C261D', flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{botLabel(h.kind)}</span>
+            <span style={{ flex: 1, color: '#5A5347', fontFamily: "'JetBrains Mono',monospace", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.path}</span>
+            <span style={{ width: 34, textAlign: 'right', color: statusTone(h.code), fontFamily: "'JetBrains Mono',monospace", fontWeight: 600, flexShrink: 0 }}>{h.code}</span>
+          </div>
+        ))}
       </div>
     </div>
   )
